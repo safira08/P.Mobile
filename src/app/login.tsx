@@ -13,8 +13,26 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { useAuth } from '../context/AuthContext';
 
-// 1. Icon Perisai Terverifikasi (Top Badge)
+// ==========================================
+// VALIDASI HELPERS
+// ==========================================
+const NIM_LENGTH = 15;
+const EMAIL_SUFFIX = '@webmail.umm.ac.id';
+
+function isValidNim(nim: string): boolean {
+  return /^\d{15}$/.test(nim.trim());
+}
+
+function isValidEmail(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(EMAIL_SUFFIX);
+}
+
+// ==========================================
+// ICON COMPONENTS
+// ==========================================
+
 function ShieldCheckIcon({ size = 14, color = '#1D4ED8' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -22,15 +40,11 @@ function ShieldCheckIcon({ size = 14, color = '#1D4ED8' }: { size?: number; colo
         d="M12 2L3 6V11.09C3 16.65 6.84 21.74 12 23C17.16 21.74 21 16.65 21 11.09V6L12 2Z"
         fill={color}
       />
-      <Path
-        d="M10 15.5L6.5 12L7.91 10.59L10 12.67L16.09 6.58L17.5 8L10 15.5Z"
-        fill="#FFFFFF"
-      />
+      <Path d="M10 15.5L6.5 12L7.91 10.59L10 12.67L16.09 6.58L17.5 8L10 15.5Z" fill="#FFFFFF" />
     </Svg>
   );
 }
 
-// 2. Icon Dokumen SIMAK dengan Bookmark Oranye
 function DocumentLogoIcon() {
   return (
     <Svg width={32} height={38} viewBox="0 0 30 36" fill="none">
@@ -43,182 +57,233 @@ function DocumentLogoIcon() {
   );
 }
 
-// 3. Icon Masuk / Login (Door with Arrow)
 function LoginIcon({ size = 18, color = '#0F2850' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M9 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H9"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
       />
-      <Path
-        d="M14 16L18 12L14 8"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M18 12H8"
-        stroke={color}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <Path d="M14 16L18 12L14 8" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M18 12H8" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
 
-// 4. Icon Tambah User (Daftar Baru)
 function UserPlusIcon({ size = 18, color = '#4B5563' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M16 21V19C16 16.7909 14.2091 15 12 15H5C2.79086 15 1 16.7909 1 19V21"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       />
       <Circle cx="8.5" cy="7" r="4" stroke={color} strokeWidth="2" />
-      <Path
-        d="M20 8V14M17 11H23"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+      <Path d="M20 8V14M17 11H23" stroke={color} strokeWidth="2" strokeLinecap="round" />
     </Svg>
   );
 }
 
-// 5. Icon Kartu Mahasiswa / ID Card (Input NIM)
 function IdCardIcon({ size = 19, color = '#6B7280' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect
-        x="3"
-        y="4"
-        width="18"
-        height="16"
-        rx="3"
-        stroke={color}
-        strokeWidth="1.8"
-      />
+      <Rect x="3" y="4" width="18" height="16" rx="3" stroke={color} strokeWidth="1.8" />
       <Circle cx="9" cy="10" r="2.2" stroke={color} strokeWidth="1.8" />
       <Path
         d="M15 9H17M15 13H17M5.8 17C6.4 15.2 7.7 14.2 9 14.2C10.3 14.2 11.6 15.2 12.2 17"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
+        stroke={color} strokeWidth="1.8" strokeLinecap="round"
       />
     </Svg>
   );
 }
 
-// 6. Icon Gembok / Lock (Input Password)
 function LockIcon({ size = 18, color = '#6B7280' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect
-        x="4"
-        y="10"
-        width="16"
-        height="11"
-        rx="2.5"
-        stroke={color}
-        strokeWidth="1.8"
-      />
+      <Rect x="4" y="10" width="16" height="11" rx="2.5" stroke={color} strokeWidth="1.8" />
       <Path
         d="M7.5 10V7C7.5 4.51472 9.51472 2.5 12 2.5C14.4853 2.5 16.5 4.51472 16.5 7V10"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
+        stroke={color} strokeWidth="1.8" strokeLinecap="round"
       />
       <Circle cx="12" cy="15.5" r="1.5" fill={color} />
     </Svg>
   );
 }
 
-// 7. Icon Mata Coret / Eye Off (Toggle Password)
 function EyeOffIcon({ size = 20, color = '#4B5563' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M17.94 17.94A10.07 10.07 0 0 1 12 20C7 20 2.73 16.11 1 12C1.75 10.22 2.94 8.7 4.45 7.52M9.9 4.24A9.12 9.12 0 0 1 12 4C17 4 21.27 7.89 23 12A10.42 10.42 0 0 1 19.5 16.5M1 1L23 23"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       />
-      <Path
-        d="M9.88 9.88A3 3 0 1 0 14.12 14.12"
-        stroke={color}
-        strokeWidth="1.8"
-      />
+      <Path d="M9.88 9.88A3 3 0 1 0 14.12 14.12" stroke={color} strokeWidth="1.8" />
     </Svg>
   );
 }
 
-// 8. Icon Mata Terbuka / Eye (Toggle Password)
 function EyeOpenIcon({ size = 20, color = '#4B5563' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M1 12C2.73 7.89 7 4 12 4C17 4 21.27 7.89 23 12C21.27 16.11 17 20 12 20C7 20 2.73 16.11 1 12Z"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       />
       <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth="1.8" />
     </Svg>
   );
 }
 
-// 9. Icon Tanya / Help Admin
+function MailIcon({ size = 18, color = '#6B7280' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x="2" y="4" width="20" height="16" rx="3" stroke={color} strokeWidth="1.8" />
+      <Path d="M2 7L12 13L22 7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function UserIcon({ size = 18, color = '#6B7280' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="1.8" />
+      <Path d="M4 21C4 17.134 7.58172 14 12 14C16.4183 14 20 17.134 20 21" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 function HelpQuestionIcon({ size = 16, color = '#0284C7' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.8" />
       <Path
         d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.39913C11.0108 7.03015 11.7301 6.87701 12.4357 6.96645C13.1412 7.05588 13.7918 7.38281 14.2758 7.89063C14.7597 8.39845 15.0487 9.05677 15.0931 9.75239C15.0931 11.5 12.5 12.5 12.5 12.5"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       />
       <Circle cx="12" cy="16.5" r="1" fill={color} />
     </Svg>
   );
 }
 
+function WarningIcon({ size = 18, color = '#DC2626' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"
+        stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+      <Path d="M12 9V13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Circle cx="12" cy="17" r="1" fill={color} />
+    </Svg>
+  );
+}
+
+// ==========================================
+// KOMPONEN UTAMA
+// ==========================================
 export default function LoginPage() {
   const router = useRouter();
+  const { login, register } = useAuth();
+
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
-  const [nim, setNim] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Form tambahan jika di tab Daftar Baru
-  const [namaLengkap, setNamaLengkap] = useState('');
-  const [emailUmm, setEmailUmm] = useState('');
+  // ── State Login ──
+  const [loginNim, setLoginNim] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
+  // ── State Register ──
+  const [regNama, setRegNama] = useState('');
+  const [regNim, setRegNim] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regErrors, setRegErrors] = useState<{ nim?: string; email?: string; general?: string }>({});
+
+  // ─── Helpers ──────────────────────────────────────────────────────
+  const switchTab = (tab: 'login' | 'register') => {
+    setActiveTab(tab);
+    setLoginError(null);
+    setRegErrors({});
+  };
+
+  // ─── Logika Login ─────────────────────────────────────────────────
   const handleLogin = () => {
-    // Navigasi ke Dashboard SIMAK
+    setLoginError(null);
+
+    if (!loginNim.trim() || !loginPassword.trim()) {
+      setLoginError('Nomor Mahasiswa dan kata sandi wajib diisi');
+      return;
+    }
+
+    const result = login(loginNim.trim(), loginPassword);
+
+    if (!result.success) {
+      setLoginError(result.error);
+      return;
+    }
+
     router.push('/dashboard');
   };
 
+  // ─── Logika Register ──────────────────────────────────────────────
   const handleRegister = () => {
+    const errors: { nim?: string; email?: string; general?: string } = {};
+
+    // Validasi field wajib
+    if (!regNama.trim() || !regNim.trim() || !regEmail.trim() || !regPassword.trim()) {
+      errors.general = 'Semua field pendaftaran wajib diisi';
+    }
+
+    // Validasi NIM: harus tepat 15 digit angka
+    if (regNim.trim() && !isValidNim(regNim)) {
+      errors.nim = 'Nomor Mahasiswa harus 15 digit';
+    }
+
+    // Validasi email: harus berakhiran @webmail.umm.ac.id
+    if (regEmail.trim() && !isValidEmail(regEmail)) {
+      errors.email = 'Gunakan email webmail UMM (@webmail.umm.ac.id)';
+    }
+
+    // Validasi password minimal 8 karakter
+    if (regPassword.trim() && regPassword.length < 8) {
+      errors.general = 'Password minimal 8 karakter';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setRegErrors(errors);
+      return;
+    }
+
+    setRegErrors({});
+
+    // Kirim ke AuthContext untuk disimpan
+    const result = register({
+      nim: regNim.trim(),
+      nama: regNama.trim(),
+      email: regEmail.trim().toLowerCase(),
+      password: regPassword,
+    });
+
+    if (!result.success) {
+      setRegErrors({ general: result.error });
+      return;
+    }
+
+    // Berhasil daftar — reset form & pindah ke tab login
+    setRegNama('');
+    setRegNim('');
+    setRegEmail('');
+    setRegPassword('');
+
     Alert.alert(
-      'Pendaftaran Berhasil',
-      'Akun SIMAK Mahasiswa UMM Anda telah terdaftar. Silakan masuk menggunakan NIM Anda.',
-      [{ text: 'Masuk Sekarang', onPress: () => setActiveTab('login') }]
+      'Pendaftaran Berhasil! 🎉',
+      `Akun SIMAK atas nama ${regNama.trim()} berhasil dibuat.\n\nSilakan masuk menggunakan NIM dan kata sandi Anda.`,
+      [{ text: 'Masuk Sekarang', onPress: () => switchTab('login') }]
     );
   };
 
+  // ─── RENDER ───────────────────────────────────────────────────────
   return (
     <View style={styles.outerContainer}>
       <KeyboardAvoidingView
@@ -229,15 +294,16 @@ export default function LoginPage() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
           <SafeAreaView style={styles.safeArea}>
-            {/* 1. Badge Atas: Khusus Mahasiswa UMM */}
+            {/* Badge Atas */}
             <View style={styles.topBadgePill}>
               <ShieldCheckIcon size={14} color="#1D4ED8" />
               <Text style={styles.topBadgeText}>Khusus Mahasiswa UMM</Text>
             </View>
 
-            {/* 2. Logo Brand SIMAK */}
+            {/* Logo */}
             <View style={styles.logoRow}>
               <DocumentLogoIcon />
               <View style={styles.logoTextCol}>
@@ -246,125 +312,90 @@ export default function LoginPage() {
               </View>
             </View>
 
-            {/* 3. Slogan */}
             <Text style={styles.taglineText}>Platform Berbagi Catatan & Info Kuliah</Text>
 
-            {/* 4. Tab Selector: Masuk Akun / Daftar Baru */}
+            {/* Tab Selector */}
             <View style={styles.tabContainer}>
               <Pressable
-                style={[
-                  styles.tabButton,
-                  activeTab === 'login' ? styles.tabButtonActive : styles.tabButtonInactive,
-                ]}
-                onPress={() => setActiveTab('login')}
+                style={[styles.tabButton, activeTab === 'login' ? styles.tabButtonActive : styles.tabButtonInactive]}
+                onPress={() => switchTab('login')}
               >
-                <LoginIcon
-                  size={16}
-                  color={activeTab === 'login' ? '#0F2850' : '#6B7280'}
-                />
-                <Text
-                  style={[
-                    styles.tabButtonText,
-                    activeTab === 'login'
-                      ? styles.tabButtonTextActive
-                      : styles.tabButtonTextInactive,
-                  ]}
-                >
+                <LoginIcon size={16} color={activeTab === 'login' ? '#0F2850' : '#6B7280'} />
+                <Text style={[styles.tabButtonText, activeTab === 'login' ? styles.tabButtonTextActive : styles.tabButtonTextInactive]}>
                   Masuk Akun
                 </Text>
               </Pressable>
 
               <Pressable
-                style={[
-                  styles.tabButton,
-                  activeTab === 'register' ? styles.tabButtonActive : styles.tabButtonInactive,
-                ]}
-                onPress={() => setActiveTab('register')}
+                style={[styles.tabButton, activeTab === 'register' ? styles.tabButtonActive : styles.tabButtonInactive]}
+                onPress={() => switchTab('register')}
               >
-                <UserPlusIcon
-                  size={16}
-                  color={activeTab === 'register' ? '#0F2850' : '#6B7280'}
-                />
-                <Text
-                  style={[
-                    styles.tabButtonText,
-                    activeTab === 'register'
-                      ? styles.tabButtonTextActive
-                      : styles.tabButtonTextInactive,
-                  ]}
-                >
+                <UserPlusIcon size={16} color={activeTab === 'register' ? '#0F2850' : '#6B7280'} />
+                <Text style={[styles.tabButtonText, activeTab === 'register' ? styles.tabButtonTextActive : styles.tabButtonTextInactive]}>
                   Daftar Baru
                 </Text>
               </Pressable>
             </View>
 
-            {/* 5. Kartu Putih Formulir (White Card) */}
+            {/* Form Card */}
             <View style={styles.formCard}>
               {activeTab === 'login' ? (
+                // ─── FORM LOGIN ────────────────────────────────────
                 <>
-                  {/* Field NIM */}
+                  {/* NIM */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Nomor Mahasiswa (NIM)</Text>
-                    <View style={styles.inputFieldWrapper}>
-                      <IdCardIcon size={18} color="#6B7280" />
+                    <View style={[styles.inputFieldWrapper, loginError ? styles.inputFieldError : null]}>
+                      <IdCardIcon size={18} color={loginError ? '#DC2626' : '#6B7280'} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Nomor Mahasiswa (NIM)"
+                        placeholder="Masukkan NIM Anda"
                         placeholderTextColor="#9CA3AF"
-                        value={nim}
-                        onChangeText={setNim}
+                        value={loginNim}
+                        onChangeText={(t) => { setLoginNim(t); setLoginError(null); }}
                         keyboardType="numeric"
                         autoCapitalize="none"
+                        maxLength={15}
                       />
                     </View>
                   </View>
 
-                  {/* Field Password */}
+                  {/* Password */}
                   <View style={[styles.inputGroup, { marginTop: 16 }]}>
                     <View style={styles.passwordLabelRow}>
                       <Text style={styles.inputLabel}>Password/PIC</Text>
-                      <Pressable
-                        onPress={() =>
-                          Alert.alert(
-                            'Lupa Kata Sandi',
-                            'Silakan hubungi administrator akademik atau gunakan email webmail UMM Anda untuk mereset kata sandi.'
-                          )
-                        }
-                      >
+                      <Pressable onPress={() => Alert.alert('Lupa Kata Sandi', 'Hubungi administrator akademik atau gunakan email webmail UMM Anda untuk mereset kata sandi.')}>
                         <Text style={styles.forgotPasswordText}>Lupa Kata Sandi?</Text>
                       </Pressable>
                     </View>
-                    <View style={styles.inputFieldWrapper}>
-                      <LockIcon size={18} color="#6B7280" />
+                    <View style={[styles.inputFieldWrapper, loginError ? styles.inputFieldError : null]}>
+                      <LockIcon size={18} color={loginError ? '#DC2626' : '#6B7280'} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="........"
+                        placeholder="Kata sandi Anda"
                         placeholderTextColor="#9CA3AF"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
+                        value={loginPassword}
+                        onChangeText={(t) => { setLoginPassword(t); setLoginError(null); }}
+                        secureTextEntry={!showLoginPassword}
                         autoCapitalize="none"
                       />
-                      <Pressable
-                        onPress={() => setShowPassword(!showPassword)}
-                        hitSlop={10}
-                        style={styles.eyeIconButton}
-                      >
-                        {showPassword ? (
-                          <EyeOpenIcon size={20} color="#4B5563" />
-                        ) : (
-                          <EyeOffIcon size={20} color="#4B5563" />
-                        )}
+                      <Pressable onPress={() => setShowLoginPassword(!showLoginPassword)} hitSlop={10} style={styles.eyeIconButton}>
+                        {showLoginPassword ? <EyeOpenIcon size={20} color="#4B5563" /> : <EyeOffIcon size={20} color="#4B5563" />}
                       </Pressable>
                     </View>
                   </View>
 
+                  {/* Error Banner */}
+                  {loginError ? (
+                    <View style={styles.errorBanner}>
+                      <WarningIcon size={17} color="#DC2626" />
+                      <Text style={styles.errorBannerText}>{loginError}</Text>
+                    </View>
+                  ) : null}
+
                   {/* Tombol Masuk */}
                   <Pressable
-                    style={({ pressed }) => [
-                      styles.submitButton,
-                      pressed && styles.submitButtonPressed,
-                    ]}
+                    style={({ pressed }) => [styles.submitButton, pressed && styles.submitButtonPressed]}
                     onPress={handleLogin}
                   >
                     <LoginIcon size={18} color="#FFFFFF" />
@@ -372,84 +403,126 @@ export default function LoginPage() {
                   </Pressable>
                 </>
               ) : (
-                /* Tab Daftar Baru */
+                // ─── FORM REGISTER ─────────────────────────────────
                 <>
+                  {/* Nama Lengkap */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Nama Lengkap</Text>
-                    <View style={styles.inputFieldWrapper}>
+                    <View style={[styles.inputFieldWrapper, regErrors.general && !regNama ? styles.inputFieldError : null]}>
+                      <UserIcon size={18} color="#6B7280" />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Nama Lengkap Mahasiswa"
+                        placeholder="Nama lengkap sesuai KTM"
                         placeholderTextColor="#9CA3AF"
-                        value={namaLengkap}
-                        onChangeText={setNamaLengkap}
+                        value={regNama}
+                        onChangeText={(t) => { setRegNama(t); setRegErrors({}); }}
+                        autoCapitalize="words"
                       />
                     </View>
                   </View>
 
+                  {/* NIM */}
                   <View style={[styles.inputGroup, { marginTop: 14 }]}>
-                    <Text style={styles.inputLabel}>Nomor Mahasiswa (NIM)</Text>
-                    <View style={styles.inputFieldWrapper}>
-                      <IdCardIcon size={18} color="#6B7280" />
+                    <Text style={styles.inputLabel}>
+                      Nomor Mahasiswa (NIM){' '}
+                      <Text style={styles.inputLabelHint}>15 digit</Text>
+                    </Text>
+                    <View style={[styles.inputFieldWrapper, regErrors.nim ? styles.inputFieldError : null]}>
+                      <IdCardIcon size={18} color={regErrors.nim ? '#DC2626' : '#6B7280'} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Contoh: 202310370311xxx"
+                        placeholder="Contoh: 202410370110233"
                         placeholderTextColor="#9CA3AF"
-                        value={nim}
-                        onChangeText={setNim}
+                        value={regNim}
+                        onChangeText={(t) => {
+                          // hanya angka, maks 15
+                          const clean = t.replace(/\D/g, '').slice(0, 15);
+                          setRegNim(clean);
+                          setRegErrors({});
+                        }}
                         keyboardType="numeric"
+                        maxLength={15}
                       />
+                      {/* Counter digit */}
+                      <Text style={[styles.nimCounter, regNim.length === 15 ? styles.nimCounterOk : null]}>
+                        {regNim.length}/15
+                      </Text>
                     </View>
+                    {regErrors.nim ? (
+                      <View style={styles.fieldErrorRow}>
+                        <WarningIcon size={13} color="#DC2626" />
+                        <Text style={styles.fieldErrorText}>{regErrors.nim}</Text>
+                      </View>
+                    ) : null}
                   </View>
 
+                  {/* Email */}
                   <View style={[styles.inputGroup, { marginTop: 14 }]}>
-                    <Text style={styles.inputLabel}>Email Webmail UMM</Text>
-                    <View style={styles.inputFieldWrapper}>
+                    <Text style={styles.inputLabel}>
+                      Email Webmail UMM{' '}
+                      <Text style={styles.inputLabelHint}>@webmail.umm.ac.id</Text>
+                    </Text>
+                    <View style={[styles.inputFieldWrapper, regErrors.email ? styles.inputFieldError : null]}>
+                      <MailIcon size={18} color={regErrors.email ? '#DC2626' : '#6B7280'} />
                       <TextInput
                         style={styles.textInput}
                         placeholder="nama@webmail.umm.ac.id"
                         placeholderTextColor="#9CA3AF"
-                        value={emailUmm}
-                        onChangeText={setEmailUmm}
+                        value={regEmail}
+                        onChangeText={(t) => { setRegEmail(t); setRegErrors({}); }}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        autoCorrect={false}
                       />
                     </View>
+                    {regErrors.email ? (
+                      <View style={styles.fieldErrorRow}>
+                        <WarningIcon size={13} color="#DC2626" />
+                        <Text style={styles.fieldErrorText}>{regErrors.email}</Text>
+                      </View>
+                    ) : null}
                   </View>
 
+                  {/* Password */}
                   <View style={[styles.inputGroup, { marginTop: 14 }]}>
                     <Text style={styles.inputLabel}>Buat Password Baru</Text>
-                    <View style={styles.inputFieldWrapper}>
+                    <View style={[styles.inputFieldWrapper, regErrors.general && !regPassword ? styles.inputFieldError : null]}>
                       <LockIcon size={18} color="#6B7280" />
                       <TextInput
                         style={styles.textInput}
                         placeholder="Minimal 8 karakter"
                         placeholderTextColor="#9CA3AF"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
+                        value={regPassword}
+                        onChangeText={(t) => { setRegPassword(t); setRegErrors({}); }}
+                        secureTextEntry={!showRegPassword}
                         autoCapitalize="none"
                       />
-                      <Pressable
-                        onPress={() => setShowPassword(!showPassword)}
-                        hitSlop={10}
-                        style={styles.eyeIconButton}
-                      >
-                        {showPassword ? (
-                          <EyeOpenIcon size={20} color="#4B5563" />
-                        ) : (
-                          <EyeOffIcon size={20} color="#4B5563" />
-                        )}
+                      <Pressable onPress={() => setShowRegPassword(!showRegPassword)} hitSlop={10} style={styles.eyeIconButton}>
+                        {showRegPassword ? <EyeOpenIcon size={20} color="#4B5563" /> : <EyeOffIcon size={20} color="#4B5563" />}
                       </Pressable>
                     </View>
                   </View>
 
-                  {/* Tombol Buat Akun */}
+                  {/* Error Banner Register (general) */}
+                  {regErrors.general ? (
+                    <View style={styles.errorBanner}>
+                      <WarningIcon size={17} color="#DC2626" />
+                      <Text style={styles.errorBannerText}>{regErrors.general}</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Info format validasi */}
+                  <View style={styles.validationInfoBox}>
+                    <Text style={styles.validationInfoText}>
+                      ✓ NIM harus tepat 15 digit angka{'\n'}
+                      ✓ Email harus berakhiran @webmail.umm.ac.id{'\n'}
+                      ✓ Password minimal 8 karakter
+                    </Text>
+                  </View>
+
+                  {/* Tombol Daftar */}
                   <Pressable
-                    style={({ pressed }) => [
-                      styles.submitButton,
-                      pressed && styles.submitButtonPressed,
-                    ]}
+                    style={({ pressed }) => [styles.submitButton, pressed && styles.submitButtonPressed]}
                     onPress={handleRegister}
                   >
                     <UserPlusIcon size={18} color="#FFFFFF" />
@@ -458,7 +531,7 @@ export default function LoginPage() {
                 </>
               )}
 
-              {/* Garis Pembagi Halus di Bawah Kartu */}
+              {/* Divider */}
               <View style={styles.cardBottomDividerRow}>
                 <View style={styles.cardDividerLine} />
                 <View style={styles.cardDividerGap} />
@@ -466,32 +539,22 @@ export default function LoginPage() {
               </View>
             </View>
 
-            {/* 6. Footer Tautan */}
+            {/* Footer */}
             <View style={styles.footerContainer}>
               <View style={styles.registerPromptRow}>
                 <Text style={styles.registerPromptText}>
                   {activeTab === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
                 </Text>
-                <Pressable
-                  onPress={() =>
-                    setActiveTab(activeTab === 'login' ? 'register' : 'login')
-                  }
-                >
+                <Pressable onPress={() => switchTab(activeTab === 'login' ? 'register' : 'login')}>
                   <Text style={styles.registerLinkText}>
                     {activeTab === 'login' ? 'Daftar' : 'Masuk'}
                   </Text>
                 </Pressable>
               </View>
 
-              {/* Bantuan Admin */}
               <Pressable
                 style={styles.helpAdminRow}
-                onPress={() =>
-                  Alert.alert(
-                    'Bantuan SIMAK UMM',
-                    'Hubungi Layanan Terpadu SIMAK UMM melalui email: simak-support@umm.ac.id atau WhatsApp Admin: 0812-3456-7890'
-                  )
-                }
+                onPress={() => Alert.alert('Bantuan SIMAK UMM', 'Hubungi Layanan Terpadu SIMAK UMM melalui email: simak-support@umm.ac.id atau WhatsApp Admin: 0812-3456-7890')}
               >
                 <HelpQuestionIcon size={16} color="#0284C7" />
                 <Text style={styles.helpAdminText}>Butuh bantuan? Hubungi Admin</Text>
@@ -504,6 +567,9 @@ export default function LoginPage() {
   );
 }
 
+// ==========================================
+// STYLES
+// ==========================================
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
@@ -537,41 +603,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 8,
   },
-  topBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-    letterSpacing: 0.2,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 18,
-    gap: 10,
-  },
-  logoTextCol: {
-    justifyContent: 'center',
-  },
-  logoTitle: {
-    fontSize: 23,
-    fontWeight: '900',
-    color: '#0F2850',
-    letterSpacing: 0.5,
-  },
-  logoSubtitle: {
-    fontSize: 8.5,
-    fontWeight: '800',
-    color: '#0284C7',
-    letterSpacing: 0.8,
-    marginTop: 1,
-  },
-  taglineText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#4B5563',
-    textAlign: 'center',
-    marginTop: 20,
-  },
+  topBadgeText: { fontSize: 12, fontWeight: '700', color: '#1D4ED8', letterSpacing: 0.2 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18, gap: 10 },
+  logoTextCol: { justifyContent: 'center' },
+  logoTitle: { fontSize: 23, fontWeight: '900', color: '#0F2850', letterSpacing: 0.5 },
+  logoSubtitle: { fontSize: 8.5, fontWeight: '800', color: '#0284C7', letterSpacing: 0.8, marginTop: 1 },
+  taglineText: { fontSize: 14, fontWeight: '500', color: '#4B5563', textAlign: 'center', marginTop: 20 },
   tabContainer: {
     flexDirection: 'row',
     width: '100%',
@@ -582,44 +619,21 @@ const styles = StyleSheet.create({
     height: 50,
   },
   tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    gap: 7,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 10, gap: 7,
   },
   tabButtonActive: {
     backgroundColor: '#FFFFFF',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-      default: {
-        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4 },
+      android: { elevation: 2 },
+      default: { boxShadow: '0 2px 6px rgba(0,0,0,0.06)' },
     }),
   },
-  tabButtonInactive: {
-    backgroundColor: 'transparent',
-  },
-  tabButtonText: {
-    fontSize: 14,
-  },
-  tabButtonTextActive: {
-    fontWeight: '700',
-    color: '#0F2850',
-  },
-  tabButtonTextInactive: {
-    fontWeight: '600',
-    color: '#4B5563',
-  },
+  tabButtonInactive: { backgroundColor: 'transparent' },
+  tabButtonText: { fontSize: 14 },
+  tabButtonTextActive: { fontWeight: '700', color: '#0F2850' },
+  tabButtonTextInactive: { fontWeight: '600', color: '#4B5563' },
   formCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
@@ -629,120 +643,76 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginTop: 18,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 3,
-      },
-      default: {
-        boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 },
+      android: { elevation: 3 },
+      default: { boxShadow: '0 4px 18px rgba(0,0,0,0.04)' },
     }),
   },
-  inputGroup: {
-    width: '100%',
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  passwordLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#0284C7',
-    marginBottom: 8,
-  },
+  inputGroup: { width: '100%' },
+  inputLabel: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
+  inputLabelHint: { fontSize: 11.5, fontWeight: '500', color: '#6B7280' },
+  passwordLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  forgotPasswordText: { fontSize: 12.5, fontWeight: '700', color: '#0284C7', marginBottom: 8 },
   inputFieldWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 14,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F3F4F6', borderRadius: 12,
+    height: 48, paddingHorizontal: 14,
+    borderWidth: 1.5, borderColor: 'transparent',
   },
+  inputFieldError: { borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
   textInput: {
-    flex: 1,
-    height: '100%',
-    fontSize: 14,
-    color: '#111827',
-    marginLeft: 10,
-    paddingVertical: 0,
+    flex: 1, height: '100%', fontSize: 14,
+    color: '#111827', marginLeft: 10, paddingVertical: 0,
   },
-  eyeIconButton: {
-    padding: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+  eyeIconButton: { padding: 6, justifyContent: 'center', alignItems: 'center' },
+  nimCounter: {
+    fontSize: 11, fontWeight: '600', color: '#9CA3AF', marginLeft: 4,
   },
-  submitButton: {
-    flexDirection: 'row',
-    backgroundColor: '#0B2146',
-    height: 50,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 22,
-    gap: 8,
+  nimCounterOk: { color: '#059669' },
+  // ─── Field-level error (NIM / email) ──────────────────────────────
+  fieldErrorRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: 5, gap: 5,
   },
-  submitButtonPressed: {
-    opacity: 0.9,
+  fieldErrorText: { fontSize: 12, fontWeight: '600', color: '#DC2626', flex: 1 },
+  // ─── Error Banner ─────────────────────────────────────────────────
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#FECACA',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    marginTop: 14, gap: 10,
   },
-  submitButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  cardBottomDividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  cardDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  cardDividerGap: {
-    width: 60,
-  },
-  footerContainer: {
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  registerPromptRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  registerPromptText: {
-    fontSize: 13.5,
-    fontWeight: '500',
-    color: '#4B5563',
-  },
-  registerLinkText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#0F2850',
-    textDecorationLine: 'underline',
-  },
-  helpAdminRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  errorBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#DC2626', lineHeight: 18 },
+  // ─── Validation Info ──────────────────────────────────────────────
+  validationInfoBox: {
     marginTop: 12,
-    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  helpAdminText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0284C7',
+  validationInfoText: {
+    fontSize: 11.5, fontWeight: '500', color: '#166534', lineHeight: 19,
   },
+  // ─── Submit ───────────────────────────────────────────────────────
+  submitButton: {
+    flexDirection: 'row', backgroundColor: '#0B2146',
+    height: 50, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 18, gap: 8,
+  },
+  submitButtonPressed: { opacity: 0.9 },
+  submitButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  cardBottomDividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
+  cardDividerLine: { flex: 1, height: 1, backgroundColor: '#F3F4F6' },
+  cardDividerGap: { width: 60 },
+  // ─── Footer ───────────────────────────────────────────────────────
+  footerContainer: { alignItems: 'center', marginTop: 22, width: '100%' },
+  registerPromptRow: { flexDirection: 'row', alignItems: 'center' },
+  registerPromptText: { fontSize: 13.5, fontWeight: '500', color: '#4B5563' },
+  registerLinkText: { fontSize: 13.5, fontWeight: '700', color: '#0F2850', textDecorationLine: 'underline' },
+  helpAdminRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6 },
+  helpAdminText: { fontSize: 13, fontWeight: '700', color: '#0284C7' },
 });

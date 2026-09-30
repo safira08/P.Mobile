@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { useAuth } from '../context/AuthContext';
 
 // ==========================================
 // TIPE DATA & TINGKAT KESULITAN MATERI
@@ -437,6 +438,27 @@ function formatRupiah(amount: number): string {
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
+
+  // Fungsi Logout: hapus session & redirect ke login
+  const handleLogout = () => {
+    Alert.alert(
+      'Keluar dari SIMAK',
+      'Apakah Anda yakin ingin keluar dari akun SIMAK?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/login');
+          },
+        },
+      ]
+    );
+  };
+
 
   // Active Bottom Navigation Tab: 'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'
   // Default dibuka di 'profil' agar langsung identik persis dengan gambar screenshot user!
@@ -568,12 +590,12 @@ export default function DashboardScreen() {
       description: uploadDesc.trim() || 'Rangkuman lengkap materi kuliah dari mahasiswa UMM.',
       course: uploadCourse,
       courseCode: uploadCourseCode,
-      semester: 'Semester 5',
+      semester: user?.semester ?? 'Semester 5',
       pages: parseInt(uploadPages) || 18,
       downloads: 0,
       upvotes: 1,
-      author: 'martin',
-      authorNim: '2206812390',
+      author: user?.nama ?? 'Mahasiswa',
+      authorNim: user?.nim ?? '-',
       verified: true,
       timeAgo: 'Baru saja',
       difficulty: uploadDifficulty,
@@ -606,27 +628,33 @@ export default function DashboardScreen() {
   // RENDER KONTEN TAB: PROFIL (PERSIS SESUAI SCREENSHOT USER)
   // =========================================================================
   const renderProfileTab = () => {
+    // Data dinamis dari AuthContext
+    const displayName = user?.nama ?? 'Mahasiswa';
+    const displayNim = user?.nim ?? '-';
+    const displayJurusan = user?.jurusan ?? 'S1 Teknik Informatika';
+    const displaySemester = user?.semester ?? 'Semester 5';
+
     return (
       <View style={styles.tabContentContainer}>
-        {/* 1. Profil Info Card (Martin) */}
+        {/* 1. Profil Info Card (Dinamis dari AuthContext) */}
         <View style={styles.profileHeroCard}>
           <View style={styles.profileHeroRow}>
             {/* Avatar Stylized Vector (Tanpa foto orang asli) */}
             <StudentVectorAvatar size={74} />
 
             <View style={styles.profileTextCol}>
-              <Text style={styles.profileName}>martin</Text>
-              <Text style={styles.profileNim}>NIM 2206812390</Text>
-              <Text style={styles.profileMajor}>S1 Teknik Informatika</Text>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileNim}>NIM {displayNim}</Text>
+              <Text style={styles.profileMajor}>{displayJurusan}</Text>
               <Text style={styles.profileUniv}>Universitas Muhammadiyah Malang</Text>
             </View>
           </View>
 
-          {/* Badges Row: Semester 5 (Aktif) & Reguler 2024 */}
+          {/* Badges Row: Semester (Aktif) & Reguler */}
           <View style={styles.profileBadgesRow}>
             <View style={styles.semesterBadge}>
               <View style={styles.activeDot} />
-              <Text style={styles.semesterBadgeText}>Semester 5 (Aktif)</Text>
+              <Text style={styles.semesterBadgeText}>{displaySemester} (Aktif)</Text>
             </View>
 
             <View style={styles.regulerBadge}>
@@ -634,6 +662,31 @@ export default function DashboardScreen() {
               <Text style={styles.regulerBadgeText}>Reguler 2024</Text>
             </View>
           </View>
+
+          {/* Tombol Logout */}
+          <Pressable
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9"
+                stroke="#DC2626"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Path
+                d="M16 17L21 12L16 7"
+                stroke="#DC2626"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Path d="M21 12H9" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
+            </Svg>
+            <Text style={styles.logoutButtonText}>Keluar dari Akun</Text>
+          </Pressable>
         </View>
 
         {/* 2. Card Top Kontributor Gold & XP Progress */}
@@ -866,7 +919,7 @@ export default function DashboardScreen() {
               style={styles.seeMoreBtn}
               onPress={() =>
                 Alert.alert(
-                  'Arsip Lengkap Martin',
+                  `Arsip Lengkap ${user?.nama ?? 'Mahasiswa'}`,
                   'Memuat 10 dokumen catatan kuliah lainnya dari semester 1 hingga 5.'
                 )
               }
@@ -889,7 +942,7 @@ export default function DashboardScreen() {
 
         {profileSubTab === 'review' && (
           <View style={styles.emptyStateBox}>
-            <Text style={styles.emptyStateTitle}>Review & Tips Belajar Martin</Text>
+            <Text style={styles.emptyStateTitle}>Review & Tips Belajar {user?.nama ?? 'Mahasiswa'}</Text>
             <Text style={styles.emptyStateDesc}>
               "Kunci memahami Struktur Data adalah visualisasi pointer dan rekursi. Catatan yang saya buat selalu dilengkapi contoh tracing kode baris demi baris."
             </Text>
@@ -2616,4 +2669,24 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: '#16A34A',
   },
+  // ─── Logout Button ────────────────────────────────────────────────
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    gap: 8,
+  },
+  logoutButtonText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
 });
+
