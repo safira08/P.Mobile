@@ -285,22 +285,12 @@ function VerifiedCheckIcon({ size = 13, color = '#0284C7' }: { size?: number; co
   );
 }
 
-// 13. Icon Analytics / Chart
-function ChartIcon({ size = 16, color = '#4B5563' }: { size?: number; color?: string }) {
+// 13. Icon Pencarian / Search
+function SearchIcon({ size = 18, color = '#64748B' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 3V21H21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M7 16L12 10L16 14L21 7" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-// 14. Icon Edit / Square Pen
-function EditPenIcon({ size = 16, color = '#4B5563' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M18.5 2.5A2.12132 2.12132 0 0 1 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="11" cy="11" r="8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M21 21L16.65 16.65" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -442,30 +432,14 @@ export default function DashboardScreen() {
 
   // Fungsi Logout: hapus session & redirect ke login
   const handleLogout = () => {
-    Alert.alert(
-      'Keluar dari SIMAK',
-      'Apakah Anda yakin ingin keluar dari akun SIMAK?',
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Keluar',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/login');
-          },
-        },
-      ]
-    );
+    logout();
+    router.replace('/login');
   };
 
 
   // Active Bottom Navigation Tab: 'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'
   // Default dibuka di 'profil' agar langsung identik persis dengan gambar screenshot user!
   const [activeTab, setActiveTab] = useState<'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'>('profil');
-
-  // Sub-tab di Halaman Profil: 'unggahan' | 'aktivitas' | 'review'
-  const [profileSubTab, setProfileSubTab] = useState<'unggahan' | 'aktivitas' | 'review'>('unggahan');
 
   // State Daftar Catatan
   const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
@@ -484,11 +458,12 @@ export default function DashboardScreen() {
   const [uploadCourse, setUploadCourse] = useState('Pemrograman Mobile');
   const [uploadCourseCode, setUploadCourseCode] = useState('CS-302');
   const [uploadDifficulty, setUploadDifficulty] = useState<DifficultyLevel>('dasar');
-  const [uploadPages, setUploadPages] = useState('20');
+  const [uploadPages] = useState('20');
   const [uploadDesc, setUploadDesc] = useState('');
 
-  // Filter di Beranda
+  // Filter di Beranda & Cari MK
   const [searchQuery, setSearchQuery] = useState('');
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<'semua' | DifficultyLevel>('semua');
 
   // ==========================================
@@ -617,13 +592,6 @@ export default function DashboardScreen() {
     );
   };
 
-  // Toggle Bookmark
-  const handleToggleBookmark = (noteId: string) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, bookmarked: !n.bookmarked } : n))
-    );
-  };
-
   // =========================================================================
   // RENDER KONTEN TAB: PROFIL (PERSIS SESUAI SCREENSHOT USER)
   // =========================================================================
@@ -631,323 +599,125 @@ export default function DashboardScreen() {
     // Data dinamis dari AuthContext
     const displayName = user?.nama ?? 'Mahasiswa';
     const displayNim = user?.nim ?? '-';
-    const displayJurusan = user?.jurusan ?? 'S1 Teknik Informatika';
+    const displayJurusan = user?.jurusan ?? 'S1 Informatika';
     const displaySemester = user?.semester ?? 'Semester 5';
+
+    // Ambil daftar catatan milik user
+    const myNotes = notes.filter(n => n.authorNim === user?.nim || n.author === user?.nama);
+    const totalUpvotes = myNotes.reduce((sum, n) => sum + n.upvotes, 0);
 
     return (
       <View style={styles.tabContentContainer}>
-        {/* 1. Profil Info Card (Dinamis dari AuthContext) */}
+        {/* 1. Header Profil (Sesuai Gambar) */}
         <View style={styles.profileHeroCard}>
           <View style={styles.profileHeroRow}>
-            {/* Avatar Stylized Vector (Tanpa foto orang asli) */}
-            <StudentVectorAvatar size={74} />
-
+            <View style={styles.avatarContainer}>
+              <StudentVectorAvatar size={74} />
+              <View style={styles.semesterAvatarBadge}>
+                <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
+              </View>
+            </View>
             <View style={styles.profileTextCol}>
-              <Text style={styles.profileName}>{displayName}</Text>
-              <Text style={styles.profileNim}>NIM {displayNim}</Text>
-              <Text style={styles.profileMajor}>{displayJurusan}</Text>
-              <Text style={styles.profileUniv}>Universitas Muhammadiyah Malang</Text>
-            </View>
-          </View>
-
-          {/* Badges Row: Semester (Aktif) & Reguler */}
-          <View style={styles.profileBadgesRow}>
-            <View style={styles.semesterBadge}>
-              <View style={styles.activeDot} />
-              <Text style={styles.semesterBadgeText}>{displaySemester} (Aktif)</Text>
-            </View>
-
-            <View style={styles.regulerBadge}>
-              <GraduationCapNavIcon size={14} color="#0284C7" />
-              <Text style={styles.regulerBadgeText}>Reguler 2024</Text>
-            </View>
-          </View>
-
-          {/* Tombol Logout */}
-          <Pressable
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9"
-                stroke="#DC2626"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Path
-                d="M16 17L21 12L16 7"
-                stroke="#DC2626"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Path d="M21 12H9" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
-            </Svg>
-            <Text style={styles.logoutButtonText}>Keluar dari Akun</Text>
-          </Pressable>
-        </View>
-
-        {/* 2. Card Top Kontributor Gold & XP Progress */}
-        <View style={styles.contributorCard}>
-          <View style={styles.contributorHeaderRow}>
-            <View style={styles.contributorTitleRow}>
-              <View style={styles.medalSquircle}>
-                <Text style={styles.medalEmoji}>🏅</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                <Text style={styles.profileName}>{displayName}</Text>
+                <VerifiedCheckIcon size={14} color="#3B82F6" />
               </View>
-              <View style={styles.contributorTextCol}>
-                <View style={styles.contributorNameRow}>
-                  <Text style={styles.contributorTitle}>Top Kontributor Gold</Text>
-                  <Text style={styles.contributorInlineMedal}> 🏅</Text>
-                </View>
-                <Text style={styles.contributorSubtitle}>Pustakawan Kampus Tk. 4</Text>
-              </View>
+              <Text style={styles.profileNim}>NIM: {displayNim}</Text>
+              <Text style={styles.profileMajor}>{displayJurusan} • {displaySemester}</Text>
             </View>
-
-            <View style={styles.xpCol}>
-              <Text style={styles.xpNumber}>1.420</Text>
-              <Text style={styles.xpLabel}>Poin XP</Text>
-            </View>
-          </View>
-
-          {/* Progress Bar XP */}
-          <View style={styles.progressInfoRow}>
-            <Text style={styles.progressNextText}>Menuju Tk. 5 (Arsiparis Utama)</Text>
-            <Text style={styles.progressCountText}>820 / 2.000 XP</Text>
-          </View>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: '41%' }]} />
           </View>
         </View>
 
-        {/* 3. Stats Row (3 Rounded Cards: Catatan, Unduhan, Upvotes) */}
-        <View style={styles.statsThreeRow}>
-          {/* Card 1: 12 Catatan */}
-          <View style={styles.statMiniCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#E0F2FE' }]}>
-              <NotesStackIcon size={18} color="#0284C7" />
+        {/* 2. Stats Grid 2 Kolom */}
+        <View style={styles.statsTwoRow}>
+          <View style={styles.statLargeCard}>
+            <View style={[styles.statLargeIconBox, { backgroundColor: '#E0F2FE' }]}>
+              <NotesStackIcon size={24} color="#0284C7" />
             </View>
-            <Text style={styles.statMiniNumber}>{notes.length}</Text>
-            <Text style={styles.statMiniLabel}>Catatan</Text>
+            <View style={styles.statLargeTextCol}>
+              <Text style={styles.statLargeNumber}>{myNotes.length} Catatan</Text>
+              <Text style={styles.statLargeLabel}>Telah Diunggah</Text>
+            </View>
           </View>
 
-          {/* Card 2: 3.8k Unduhan */}
-          <View style={styles.statMiniCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#E0F2FE' }]}>
-              <DownloadIcon size={18} color="#0284C7" />
+          <View style={styles.statLargeCard}>
+            <View style={[styles.statLargeIconBox, { backgroundColor: '#FFEDD5' }]}>
+              <ThumbsUpIcon size={24} color="#F97316" />
             </View>
-            <Text style={styles.statMiniNumber}>3.8k</Text>
-            <Text style={styles.statMiniLabel}>Unduhan</Text>
-          </View>
-
-          {/* Card 3: 892 Upvotes */}
-          <View style={styles.statMiniCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#FFEDD5' }]}>
-              <ThumbsUpIcon size={18} color="#F97316" />
+            <View style={styles.statLargeTextCol}>
+              <Text style={styles.statLargeNumber}>{totalUpvotes.toLocaleString('id-ID')} Upvote</Text>
+              <Text style={styles.statLargeLabel}>Total Diperoleh</Text>
             </View>
-            <Text style={styles.statMiniNumber}>892</Text>
-            <Text style={styles.statMiniLabel}>Upvotes</Text>
           </View>
         </View>
 
-        {/* 4. Segmented Control / Tabs: Unggahan (12), Aktivitas, Review & Tips */}
-        <View style={styles.segmentedTabsContainer}>
-          <Pressable
-            style={[
-              styles.segmentTab,
-              profileSubTab === 'unggahan' ? styles.segmentTabActive : styles.segmentTabInactive,
-            ]}
-            onPress={() => setProfileSubTab('unggahan')}
-          >
-            <Text
-              style={[
-                styles.segmentTabText,
-                profileSubTab === 'unggahan' ? styles.segmentTabTextActive : styles.segmentTabTextInactive,
-              ]}
-            >
-              Unggahan ({notes.length})
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.segmentTab,
-              profileSubTab === 'aktivitas' ? styles.segmentTabActive : styles.segmentTabInactive,
-            ]}
-            onPress={() => setProfileSubTab('aktivitas')}
-          >
-            <Text
-              style={[
-                styles.segmentTabText,
-                profileSubTab === 'aktivitas' ? styles.segmentTabTextActive : styles.segmentTabTextInactive,
-              ]}
-            >
-              Aktivitas
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.segmentTab,
-              profileSubTab === 'review' ? styles.segmentTabActive : styles.segmentTabInactive,
-            ]}
-            onPress={() => setProfileSubTab('review')}
-          >
-            <Text
-              style={[
-                styles.segmentTabText,
-                profileSubTab === 'review' ? styles.segmentTabTextActive : styles.segmentTabTextInactive,
-              ]}
-            >
-              Review & Tips
-            </Text>
-          </Pressable>
+        {/* 3. Catatan Saya Section */}
+        <View style={styles.sectionHeaderRow}>
+          <View>
+            <Text style={styles.sectionTitleHeaderAlt}>Catatan Saya</Text>
+            <Text style={styles.sectionSubHeader}>Daftar materi yang pernah kamu unggah</Text>
+          </View>
+          <View style={styles.badgeDocCount}>
+            <Text style={styles.badgeDocCountText}>{myNotes.length} Dokumen</Text>
+          </View>
         </View>
 
-        {/* 5. Daftar Unggahan Dokumen & Rangkuman */}
-        {profileSubTab === 'unggahan' && (
-          <View style={styles.feedWrapper}>
-            {notes.map((note) => {
-              const diffConfig = DIFFICULTY_CONFIG[note.difficulty];
-              return (
-                <View key={note.id} style={styles.noteItemCard}>
-                  {/* Baris Badge: CS-201, Terverifikasi, Tingkat Kesulitan & Waktu */}
-                  <View style={styles.noteCardTopRow}>
-                    <View style={styles.badgesGroup}>
-                      <View style={styles.codeBadge}>
-                        <Text style={styles.codeBadgeText}>{note.courseCode}</Text>
-                      </View>
-
-                      {note.verified && (
-                        <View style={styles.verifiedBadge}>
-                          <VerifiedCheckIcon size={12} color="#0369A1" />
-                          <Text style={styles.verifiedBadgeText}>Terverifikasi</Text>
-                        </View>
-                      )}
-
-                      {/* Badge Tingkat Kesulitan Berbayar */}
-                      <View style={[styles.difficultyBadge, { backgroundColor: diffConfig.badgeBg }]}>
-                        <Text style={[styles.difficultyBadgeText, { color: diffConfig.color }]}>
-                          {diffConfig.label} • {formatRupiah(note.price)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.timeAgoText}>{note.timeAgo}</Text>
+        {/* Daftar Catatan */}
+        <View style={styles.feedWrapper}>
+          {myNotes.map((note) => (
+            <View key={note.id} style={styles.noteItemCard}>
+              <View style={styles.noteCardTopRow}>
+                <View style={styles.badgesGroup}>
+                  <View style={styles.codeBadge}>
+                    <Text style={styles.codeBadgeText}>{note.courseCode} • {note.semester.replace('Semester', 'Sem')}</Text>
                   </View>
-
-                  {/* Judul Rangkuman */}
-                  <Text style={styles.noteItemTitle}>{note.title}</Text>
-
-                  {/* Deskripsi Singkat */}
-                  <Text style={styles.noteItemDesc} numberOfLines={2}>
-                    {note.description}
-                  </Text>
-
-                  {/* Baris Bawah: Upvotes, Unduhan, Biaya Unduh & Aksi */}
-                  <View style={styles.noteCardBottomRow}>
-                    <View style={styles.noteStatsGroup}>
-                      <View style={styles.noteStatItem}>
-                        <ThumbsUpIcon size={14} color="#EA580C" />
-                        <Text style={styles.noteStatText}>{note.upvotes}</Text>
-                      </View>
-
-                      <View style={styles.noteStatItem}>
-                        <DownloadIcon size={14} color="#6B7280" />
-                        <Text style={styles.noteStatText}>{note.downloads}</Text>
-                      </View>
-                    </View>
-
-                    {/* Tombol Unduh Berbayar Sesuai Tingkat Kesulitan */}
-                    <View style={styles.noteActionsGroup}>
-                      <Pressable
-                        style={[
-                          styles.paidDownloadBtn,
-                          note.purchased ? styles.paidDownloadBtnPurchased : styles.paidDownloadBtnActive,
-                        ]}
-                        onPress={() => handleInitiateDownload(note)}
-                      >
-                        {note.purchased ? (
-                          <>
-                            <VerifiedCheckIcon size={13} color="#059669" />
-                            <Text style={styles.paidDownloadPurchasedText}>Unduh (Milik Anda)</Text>
-                          </>
-                        ) : (
-                          <>
-                            <LockIcon size={13} color="#FFFFFF" />
-                            <Text style={styles.paidDownloadText}>
-                              Unduh ({formatRupiah(note.price)})
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-
-                      {/* Tombol Analytics & Edit */}
-                      <Pressable
-                        style={styles.iconSquareBtn}
-                        onPress={() =>
-                          Alert.alert(
-                            'Statistik Dokumen',
-                            `Dokumen: ${note.title}\nTotal Pembaca: 3.400+\nTotal Unduhan Berbayar: ${note.downloads}\nRating: 4.9/5.0`
-                          )
-                        }
-                      >
-                        <ChartIcon size={16} color="#475569" />
-                      </Pressable>
-
-                      <Pressable
-                        style={styles.iconSquareBtn}
-                        onPress={() =>
-                          Alert.alert('Opsi Dokumen', 'Pilih opsi yang ingin Anda lakukan:', [
-                            { text: 'Bagikan Tautan', onPress: () => Alert.alert('Tautan Tersalin') },
-                            { text: 'Edit Deskripsi' },
-                            { text: 'Batal', style: 'cancel' },
-                          ])
-                        }
-                      >
-                        <EditPenIcon size={16} color="#475569" />
-                      </Pressable>
-                    </View>
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedBadgeText}>Terbit</Text>
                   </View>
                 </View>
-              );
-            })}
+              </View>
+              <Text style={styles.noteItemTitle}>{note.title}</Text>
+              <View style={styles.noteCardBottomRowAlt}>
+                <View style={styles.noteStatsGroupAlt}>
+                  <View style={styles.noteStatItemAlt}>
+                    <ThumbsUpIcon size={14} color="#F97316" />
+                    <Text style={[styles.noteStatText, { color: '#F97316' }]}>{note.upvotes} Upvote</Text>
+                  </View>
+                  <View style={styles.noteStatItemAlt}>
+                    <DownloadIcon size={14} color="#94A3B8" />
+                    <Text style={styles.noteStatText}>{note.downloads} Unduhan</Text>
+                  </View>
+                </View>
+                <Text style={styles.timeAgoText}>{note.timeAgo}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
 
-            {/* Tombol "Lihat 10 Dokumen Lainnya ->" */}
-            <Pressable
-              style={styles.seeMoreBtn}
-              onPress={() =>
-                Alert.alert(
-                  `Arsip Lengkap ${user?.nama ?? 'Mahasiswa'}`,
-                  'Memuat 10 dokumen catatan kuliah lainnya dari semester 1 hingga 5.'
-                )
-              }
-            >
-              <Text style={styles.seeMoreBtnText}>Lihat 10 Dokumen Lainnya →</Text>
-            </Pressable>
+        {/* 4. Riwayat Unduhan Action Card */}
+        <Pressable style={styles.historyDownloadCard} onPress={() => setActiveTab('bookmark')}>
+          <View style={styles.historyIconBox}>
+            <DownloadIcon size={20} color="#0284C7" />
           </View>
-        )}
+          <View style={styles.historyTextCol}>
+            <Text style={styles.historyTitle}>Riwayat Unduhan</Text>
+            <Text style={styles.historySub}>28 berkas tersimpan di perangkat</Text>
+          </View>
+          <View style={styles.historyRightBadge}>
+            <Text style={styles.historyRightBadgeText}>28 File &gt;</Text>
+          </View>
+        </Pressable>
 
-        {profileSubTab === 'aktivitas' && (
-          <View style={styles.emptyStateBox}>
-            <Text style={styles.emptyStateTitle}>Aktivitas Terbaru</Text>
-            <Text style={styles.emptyStateDesc}>
-              • Kemarin: Mengunggah modul Binary Search Tree (CS-201){'\n'}
-              • 3 hari lalu: Menerima 342 upvotes dari mahasiswa Informatika{'\n'}
-              • 5 hari lalu: Mencapai peringkat Top Kontributor Gold 🏅
-            </Text>
-          </View>
-        )}
+        {/* 5. Keluar Akun Button */}
+        <Pressable style={styles.logoutButtonAlt} onPress={handleLogout}>
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+            <Path d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M16 17L21 12L16 7" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M21 12H9" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
+          </Svg>
+          <Text style={styles.logoutButtonTextAlt}>Keluar Akun</Text>
+        </Pressable>
 
-        {profileSubTab === 'review' && (
-          <View style={styles.emptyStateBox}>
-            <Text style={styles.emptyStateTitle}>Review & Tips Belajar {user?.nama ?? 'Mahasiswa'}</Text>
-            <Text style={styles.emptyStateDesc}>
-              "Kunci memahami Struktur Data adalah visualisasi pointer dan rekursi. Catatan yang saya buat selalu dilengkapi contoh tracing kode baris demi baris."
-            </Text>
-          </View>
-        )}
       </View>
     );
   };
@@ -1130,6 +900,11 @@ export default function DashboardScreen() {
       { code: 'AI-401', name: 'Kecerdasan Buatan & ML', count: 7, minPrice: 35000, level: 'Eksklusif' },
     ];
 
+    const filteredCourses = coursesList.filter((c) =>
+      c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+      c.code.toLowerCase().includes(courseSearchQuery.toLowerCase())
+    );
+
     return (
       <View style={styles.tabContentContainer}>
         <View style={styles.pageHeaderBanner}>
@@ -1140,7 +915,19 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {coursesList.map((c) => (
+        {/* Kotak Pencarian Cari MK */}
+        <View style={styles.searchBoxCariMK}>
+          <SearchIcon size={18} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInputCariMK}
+            placeholder="Cari nama mata kuliah atau kode MK..."
+            placeholderTextColor="#94A3B8"
+            value={courseSearchQuery}
+            onChangeText={setCourseSearchQuery}
+          />
+        </View>
+
+        {filteredCourses.map((c) => (
           <Pressable
             key={c.code}
             style={styles.courseCard}
@@ -1171,7 +958,6 @@ export default function DashboardScreen() {
   // =========================================================================
   const renderBookmarkTab = () => {
     const purchasedNotes = notes.filter((n) => n.purchased);
-    const bookmarkedNotes = notes.filter((n) => n.bookmarked);
 
     return (
       <View style={styles.tabContentContainer}>
@@ -2688,5 +2474,186 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
+  
+  // ==========================================
+  // NEW STYLES FOR PROFILE TAB
+  // ==========================================
+  avatarContainer: {
+    position: 'relative',
+  },
+  semesterAvatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  semesterAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statsTwoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statLargeCard: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statLargeIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statLargeTextCol: {
+    flex: 1,
+  },
+  statLargeNumber: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  statLargeLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  sectionTitleHeaderAlt: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F2850',
+    marginBottom: 4,
+  },
+  sectionSubHeader: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  badgeDocCount: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  badgeDocCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  noteCardBottomRowAlt: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  noteStatsGroupAlt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  noteStatItemAlt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyDownloadCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  historyIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  historyTextCol: {
+    flex: 1,
+  },
+  historyTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  historySub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  historyRightBadge: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  historyRightBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  logoutButtonAlt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 8,
+    marginBottom: 20,
+  },
+  logoutButtonTextAlt: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  searchBoxCariMK: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    height: 52,
+    borderRadius: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchInputCariMK: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  }
 });
-

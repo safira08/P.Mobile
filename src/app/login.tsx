@@ -18,7 +18,6 @@ import { useAuth } from '../context/AuthContext';
 // ==========================================
 // VALIDASI HELPERS
 // ==========================================
-const NIM_LENGTH = 15;
 const EMAIL_SUFFIX = '@webmail.umm.ac.id';
 
 function isValidNim(nim: string): boolean {
@@ -431,7 +430,7 @@ export default function LoginPage() {
                       <IdCardIcon size={18} color={regErrors.nim ? '#DC2626' : '#6B7280'} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Contoh: 202410370110233"
+                        placeholder="Masukkan 15 digit NIM, misal: 123456789012345"
                         placeholderTextColor="#9CA3AF"
                         value={regNim}
                         onChangeText={(t) => {

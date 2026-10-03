@@ -84,7 +84,7 @@ function deriveSemesterFromNim(nim: string): string {
 // Kode jurusan dari digit ke-7 dan 8 NIM UMM (karakter index 6-7)
 // Referensi kode jurusan UMM (sebagian, bisa diperluas)
 const KODE_JURUSAN: Record<string, string> = {
-  '37': 'S1 Teknik Informatika',
+  '37': 'S1 Informatika',
   '38': 'S1 Sistem Informasi',
   '36': 'S1 Teknik Elektro',
   '35': 'S1 Teknik Mesin',
@@ -109,9 +109,9 @@ function deriveJurusanFromNim(nim: string): string {
   try {
     // Digit 5-6 di NIM UMM adalah kode program studi (index 4 & 5)
     const kode = nim.substring(4, 6);
-    return KODE_JURUSAN[kode] ?? 'S1 Teknik Informatika';
+    return KODE_JURUSAN[kode] ?? 'S1 Informatika';
   } catch {
-    return 'S1 Teknik Informatika';
+    return 'S1 Informatika';
   }
 }
 
