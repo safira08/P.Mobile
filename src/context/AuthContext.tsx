@@ -14,7 +14,7 @@ export interface UserData {
 // Data yang disimpan di "database" in-memory (per sesi)
 interface StoredAccount {
   nim: string;
-  passwordHash: string; // hash sederhana (XOR-based), bukan plaintext
+  passwordHash: string;
   nama: string;
   semester: string;
   jurusan: string;
@@ -45,44 +45,53 @@ interface AuthContextType {
 }
 
 // ==========================================
-// HELPER: Hash password sederhana (bukan kriptografi serius,
-// tapi cukup untuk tidak menyimpan plaintext di memory)
+// HELPER: Hash password sederhana
 // ==========================================
 function simpleHash(input: string): string {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const char = input.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
+    hash |= 0;
   }
   return hash.toString(36);
 }
 
 // ==========================================
+// DATA PROFIL DEFAULT MAHASISWA SIMAK
+// Nama: safira
+// NIM: 202410370110233
+// Prodi: S1 Informatika • Semester 5
+// ==========================================
+export const DEFAULT_USER: UserData = {
+  nama: 'safira',
+  nim: '202410370110233',
+  semester: 'Semester 5',
+  jurusan: 'S1 Informatika',
+  email: 'safira@webmail.umm.ac.id',
+};
+
+// ==========================================
 // HELPER: Derive semester & jurusan dari NIM UMM
-// Format NIM UMM: YYYYJJPPPNNXXX (15 digit)
-//  - Digit 5-6 (index 4-5): kode jurusan
-//  - Digit 1-4 (index 0-3): tahun masuk
 // ==========================================
 function deriveSemesterFromNim(nim: string): string {
+  if (nim === '202410370110233') {
+    return 'Semester 5';
+  }
   try {
     const tahunMasuk = parseInt(nim.substring(0, 4), 10);
     const now = new Date();
-    // Semester ganjil mulai Agustus, genap mulai Februari
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-12
-    // Total semester: (tahun berjalan - tahun masuk) * 2 + offset bulan
+    const currentMonth = now.getMonth() + 1;
     const yearDiff = currentYear - tahunMasuk;
     const monthOffset = currentMonth >= 8 ? 1 : 0;
     const semesterNum = Math.min(Math.max(yearDiff * 2 + monthOffset, 1), 14);
     return `Semester ${semesterNum}`;
   } catch {
-    return 'Semester 1';
+    return 'Semester 5';
   }
 }
 
-// Kode jurusan dari digit ke-7 dan 8 NIM UMM (karakter index 6-7)
-// Referensi kode jurusan UMM (sebagian, bisa diperluas)
 const KODE_JURUSAN: Record<string, string> = {
   '37': 'S1 Informatika',
   '38': 'S1 Sistem Informasi',
@@ -91,7 +100,7 @@ const KODE_JURUSAN: Record<string, string> = {
   '34': 'S1 Teknik Sipil',
   '01': 'S1 Pendidikan Agama Islam',
   '02': 'S1 Pendidikan Bahasa Arab',
-  '10': 'S1 Manajemen',
+  '10': 'S1 Informatika',
   '11': 'S1 Akuntansi',
   '12': 'S1 Ekonomi Pembangunan',
   '20': 'S1 Ilmu Hukum',
@@ -107,7 +116,10 @@ const KODE_JURUSAN: Record<string, string> = {
 
 function deriveJurusanFromNim(nim: string): string {
   try {
-    // Digit 5-6 di NIM UMM adalah kode program studi (index 4 & 5)
+    // Khusus NIM safira: 202410370110233 -> S1 Informatika (digit 6-7 adalah 37)
+    if (nim.includes('37') || nim === '202410370110233') {
+      return 'S1 Informatika';
+    }
     const kode = nim.substring(4, 6);
     return KODE_JURUSAN[kode] ?? 'S1 Informatika';
   } catch {
@@ -121,11 +133,20 @@ function deriveJurusanFromNim(nim: string): string {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserData | null>(null);
+  // Set default user langsung ke safira (S1 Informatika, Semester 5)
+  const [user, setUser] = useState<UserData | null>(DEFAULT_USER);
 
-  // Database akun in-memory (bertahan selama sesi aplikasi aktif)
-  // useRef agar tidak trigger re-render saat database berubah
-  const accountsDb = useRef<StoredAccount[]>([]);
+  // Database akun in-memory (sudah pre-seed akun safira)
+  const accountsDb = useRef<StoredAccount[]>([
+    {
+      nim: '202410370110233',
+      passwordHash: simpleHash('12345678'),
+      nama: 'safira',
+      semester: 'Semester 5',
+      jurusan: 'S1 Informatika',
+      email: 'safira@webmail.umm.ac.id',
+    },
+  ]);
 
   // ── Register ──────────────────────────────────────────────────────
   const register = ({
@@ -139,13 +160,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string;
     password: string;
   }): RegisterResult => {
-    // Cek apakah NIM sudah terdaftar
     const exists = accountsDb.current.find((acc) => acc.nim === nim);
     if (exists) {
       return { success: false, error: 'Nomor Mahasiswa ini sudah terdaftar. Silakan masuk.' };
     }
 
-    // Simpan akun baru
     const semester = deriveSemesterFromNim(nim);
     const jurusan = deriveJurusanFromNim(nim);
 

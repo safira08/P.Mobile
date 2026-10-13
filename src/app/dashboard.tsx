@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import UnggahScreen from '../components/UnggahScreen';
 
 // ==========================================
 // TIPE DATA & TINGKAT KESULITAN MATERI
@@ -454,17 +456,90 @@ export default function DashboardScreen() {
 
   // State Modal Unggah Materi Baru (Tombol Tengah Navigasi)
   const [isUploadModalVisible, setIsUploadModalVisible] = useState<boolean>(false);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCourse, setUploadCourse] = useState('Pemrograman Mobile');
-  const [uploadCourseCode, setUploadCourseCode] = useState('CS-302');
-  const [uploadDifficulty, setUploadDifficulty] = useState<DifficultyLevel>('dasar');
-  const [uploadPages] = useState('20');
-  const [uploadDesc, setUploadDesc] = useState('');
+
+
+  // =========================================================================
+  // STATE DINAMIS: RIWAYAT UNDUHAN (Download Counter)
+  // Nilai awal 0 File — bertambah setiap kali pengguna membeli & mengunduh materi
+  // =========================================================================
+  const [downloadedNotes, setDownloadedNotes] = useState<NoteItem[]>([]);
+
+  // =========================================================================
+  // STATE DINAMIS: DATA BERANDA/EXPLORE (GET API + Fallback)
+  // =========================================================================
+  const [berandaLoading, setBerandaLoading] = useState<boolean>(true);
 
   // Filter di Beranda & Cari MK
   const [searchQuery, setSearchQuery] = useState('');
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<'semua' | DifficultyLevel>('semua');
+
+  // =========================================================================
+  // GET API BERANDA: Ambil daftar materi dari JSONPlaceholder (simulasi)
+  // Endpoint: 'https://jsonplaceholder.typicode.com/posts?_limit=4'
+  // Petakan hasil JSON ke kartu materi SIMAK (dengan FALLBACK ke INITIAL_NOTES)
+  // =========================================================================
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchBerandaNotes = async () => {
+      try {
+        const response = await fetch(
+          'https://jsonplaceholder.typicode.com/posts?_limit=4'
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data: any[] = await response.json();
+        if (isCancelled) return;
+        // Petakan hasil JSON ke struktur NoteItem SIMAK
+        const COURSE_LIST: { course: string; code: string; difficulty: DifficultyLevel; price: number; color: string }[] = [
+          { course: 'Pemrograman Mobile',        code: 'CS-302', difficulty: 'dasar',     price: 10000, color: '#1E3A5F' },
+          { course: 'Struktur Data & Algoritma', code: 'CS-201', difficulty: 'sulit',     price: 25000, color: '#0284C7' },
+          { course: 'Basis Data Terdistribusi',  code: 'BD-103', difficulty: 'menengah',  price: 15000, color: '#0D9488' },
+          { course: 'Kecerdasan Buatan & ML',    code: 'AI-401', difficulty: 'eksklusif', price: 35000, color: '#7C3AED' },
+        ];
+        const apiNotes: NoteItem[] = data.map((item, idx) => {
+          const conf = COURSE_LIST[idx % COURSE_LIST.length];
+          return {
+            id: `api-${item.id}`,
+            title: item.title
+              ? item.title.charAt(0).toUpperCase() + item.title.slice(1)
+              : `Catatan ${conf.course} #${item.id}`,
+            description: item.body
+              ? item.body.replace(/\n/g, ' ').slice(0, 120) + '…'
+              : `Rangkuman lengkap ${conf.course} siap diunduh.`,
+            course: conf.course,
+            courseCode: conf.code,
+            semester: `Semester ${(idx % 6) + 1}`,
+            pages: 20 + (item.id % 20),
+            downloads: item.id * 7,
+            upvotes: item.id * 3,
+            author: 'martin',
+            authorNim: '2206812390',
+            verified: true,
+            timeAgo: `${(idx + 1) * 2} hari lalu`,
+            difficulty: conf.difficulty,
+            difficultyLabel: DIFFICULTY_CONFIG[conf.difficulty].label,
+            price: conf.price,
+            color: conf.color,
+            purchased: false,
+            bookmarked: false,
+          };
+        });
+        // Gabungkan: catatan API di awal, lalu catatan asli yang bukan duplikat ID
+        setNotes((prev) => {
+          const existingIds = new Set(apiNotes.map((n) => n.id));
+          const nonDuplicates = prev.filter((n) => !existingIds.has(n.id) && !n.id.startsWith('api-'));
+          return [...apiNotes, ...nonDuplicates];
+        });
+      } catch (err: any) {
+        console.warn('GET API Beranda Error (Fallback aktif):', err?.message);
+        // Fallback: tetap gunakan INITIAL_NOTES jika API gagal
+      } finally {
+        if (!isCancelled) setBerandaLoading(false);
+      }
+    };
+    fetchBerandaNotes();
+    return () => { isCancelled = true; };
+  }, []);
 
   // ==========================================
   // LOGIKA PEMBAYARAN & UNDUH MATERI BERBAYAR
@@ -517,10 +592,11 @@ export default function DashboardScreen() {
       }
 
       // Tandai catatan sebagai telah dibeli & tambah unduhan
+      const purchasedNote = selectedNoteForPurchase;
       setNotes((prevNotes) =>
         prevNotes.map((n) => {
-          if (n.id === selectedNoteForPurchase.id) {
-            const currentDl = typeof n.downloads === 'number' ? n.downloads : parseInt(n.downloads) || 1200;
+          if (n.id === purchasedNote.id) {
+            const currentDl = typeof n.downloads === 'number' ? n.downloads : parseInt(String(n.downloads)) || 0;
             return {
               ...n,
               purchased: true,
@@ -530,6 +606,12 @@ export default function DashboardScreen() {
           return n;
         })
       );
+      // Tambahkan ke Riwayat Unduhan (downloadedNotes) — counter bertambah otomatis
+      setDownloadedNotes((prev) => {
+        const alreadyExists = prev.some((n) => n.id === purchasedNote.id);
+        if (alreadyExists) return prev;
+        return [...prev, { ...purchasedNote, purchased: true }];
+      });
 
       const boughtTitle = selectedNoteForPurchase.title;
       setSelectedNoteForPurchase(null);
@@ -548,49 +630,7 @@ export default function DashboardScreen() {
     }, 1200);
   };
 
-  // ==========================================
-  // LOGIKA UNGGAH MATERI BARU OLEH MAHASISWA
-  // ==========================================
-  const handlePublishUpload = () => {
-    if (!uploadTitle.trim()) {
-      Alert.alert('Form Belum Lengkap', 'Silakan masukkan judul catatan/rangkuman kuliah.');
-      return;
-    }
 
-    const price = DIFFICULTY_CONFIG[uploadDifficulty].price;
-
-    const newNote: NoteItem = {
-      id: 'note-' + Date.now(),
-      title: uploadTitle,
-      description: uploadDesc.trim() || 'Rangkuman lengkap materi kuliah dari mahasiswa UMM.',
-      course: uploadCourse,
-      courseCode: uploadCourseCode,
-      semester: user?.semester ?? 'Semester 5',
-      pages: parseInt(uploadPages) || 18,
-      downloads: 0,
-      upvotes: 1,
-      author: user?.nama ?? 'Mahasiswa',
-      authorNim: user?.nim ?? '-',
-      verified: true,
-      timeAgo: 'Baru saja',
-      difficulty: uploadDifficulty,
-      difficultyLabel: DIFFICULTY_CONFIG[uploadDifficulty].label,
-      price: price,
-      color: DIFFICULTY_CONFIG[uploadDifficulty].color,
-      purchased: true, // Pembuat otomatis punya akses
-      bookmarked: false,
-    };
-
-    setNotes((prev) => [newNote, ...prev]);
-    setIsUploadModalVisible(false);
-    setUploadTitle('');
-    setUploadDesc('');
-
-    Alert.alert(
-      'Materi Berhasil Diunggah! 🚀',
-      `Catatan "${newNote.title}" berhasil dipublikasikan dengan tarif ${formatRupiah(price)} (${DIFFICULTY_CONFIG[uploadDifficulty].label}). Setiap mahasiswa lain yang mengunduh materi ini akan memberikan royalti ke akun Anda!`
-    );
-  };
 
   // =========================================================================
   // RENDER KONTEN TAB: PROFIL (PERSIS SESUAI SCREENSHOT USER)
@@ -694,17 +734,21 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* 4. Riwayat Unduhan Action Card */}
+        {/* 4. Riwayat Unduhan Action Card — Data Dinamis dari state downloadedNotes */}
         <Pressable style={styles.historyDownloadCard} onPress={() => setActiveTab('bookmark')}>
           <View style={styles.historyIconBox}>
             <DownloadIcon size={20} color="#0284C7" />
           </View>
           <View style={styles.historyTextCol}>
             <Text style={styles.historyTitle}>Riwayat Unduhan</Text>
-            <Text style={styles.historySub}>28 berkas tersimpan di perangkat</Text>
+            <Text style={styles.historySub}>
+              {downloadedNotes.length === 0
+                ? 'Belum ada berkas yang diunduh'
+                : `${downloadedNotes.length} berkas tersimpan di perangkat`}
+            </Text>
           </View>
           <View style={styles.historyRightBadge}>
-            <Text style={styles.historyRightBadgeText}>28 File &gt;</Text>
+            <Text style={styles.historyRightBadgeText}>{downloadedNotes.length} File &gt;</Text>
           </View>
         </Pressable>
 
@@ -734,6 +778,16 @@ export default function DashboardScreen() {
       const matchDiff = difficultyFilter === 'semua' || item.difficulty === difficultyFilter;
       return matchQuery && matchDiff;
     });
+
+    // Tampilkan loading spinner saat GET API Beranda sedang berjalan
+    if (berandaLoading) {
+      return (
+        <View style={[styles.tabContentContainer, { alignItems: 'center', justifyContent: 'center', paddingTop: 60 }]}>
+          <ActivityIndicator size="large" color="#0F2850" />
+          <Text style={{ marginTop: 12, color: '#64748B', fontSize: 13 }}>Memuat daftar materi kuliah...</Text>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.tabContentContainer}>
@@ -957,6 +1011,7 @@ export default function DashboardScreen() {
   // RENDER KONTEN TAB: BOOKMARK & KOLEKSI DIBELI
   // =========================================================================
   const renderBookmarkTab = () => {
+    // Data dinamis: catatan yang telah dibeli dari state notes (bukan statis)
     const purchasedNotes = notes.filter((n) => n.purchased);
 
     return (
@@ -1057,6 +1112,21 @@ export default function DashboardScreen() {
             {activeTab === 'profil' && renderProfileTab()}
             {activeTab === 'beranda' && renderBerandaTab()}
             {activeTab === 'carimk' && renderCariMKTab()}
+            {activeTab === 'unggah' && (
+              <UnggahScreen
+                onSuccess={(createdNote?: any) => {
+                  // Tambahkan catatan baru yang diunggah ke dalam daftar notes (global state)
+                  if (createdNote) {
+                    setNotes((prev) => {
+                      const alreadyExists = prev.some((n) => n.id === createdNote.id);
+                      if (alreadyExists) return prev;
+                      return [createdNote, ...prev];
+                    });
+                  }
+                  setActiveTab('profil');
+                }}
+              />
+            )}
             {activeTab === 'bookmark' && renderBookmarkTab()}
           </ScrollView>
 
@@ -1272,126 +1342,29 @@ export default function DashboardScreen() {
 
         {/* ========================================================================= */}
         {/* MODAL UNGGAH MATERI BARU (Sesuai Tombol Tengah Navigasi +) */}
+        {/* Menggunakan UnggahScreen dengan integrasi GET Dynamic & POST Multipart API */}
         {/* ========================================================================= */}
         <Modal
-          transparent
           animationType="slide"
           visible={isUploadModalVisible}
           onRequestClose={() => setIsUploadModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.uploadModalCard}>
-              <View style={styles.uploadModalHeader}>
-                <Text style={styles.uploadModalTitle}>Unggah Catatan Kuliah</Text>
-                <Text style={styles.uploadModalSub}>
-                  Bagikan catatan kuliah & rangkuman Anda. Dapatkan royalti setiap ada mahasiswa yang mengunduh!
-                </Text>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.uploadFormScroll}>
-                {/* Judul Catatan */}
-                <Text style={styles.inputLabel}>Judul Catatan / Rangkuman:</Text>
-                <TextInput
-                  style={styles.textInputStyle}
-                  placeholder="Contoh: Rangkuman Lengkap Algoritma Sorting & DFS"
-                  placeholderTextColor="#94A3B8"
-                  value={uploadTitle}
-                  onChangeText={setUploadTitle}
-                />
-
-                {/* Mata Kuliah */}
-                <Text style={styles.inputLabel}>Mata Kuliah:</Text>
-                <TextInput
-                  style={styles.textInputStyle}
-                  placeholder="Contoh: Pemrograman Mobile"
-                  placeholderTextColor="#94A3B8"
-                  value={uploadCourse}
-                  onChangeText={setUploadCourse}
-                />
-
-                {/* Kode Mata Kuliah */}
-                <Text style={styles.inputLabel}>Kode MK:</Text>
-                <TextInput
-                  style={styles.textInputStyle}
-                  placeholder="Contoh: CS-302"
-                  placeholderTextColor="#94A3B8"
-                  value={uploadCourseCode}
-                  onChangeText={setUploadCourseCode}
-                />
-
-                {/* Pilihan Tingkat Kesulitan Berbayar (Cheapest Rp10.000) */}
-                <Text style={styles.inputLabel}>
-                  Tingkat Kesulitan (Menentukan Tarif Unduh Otomatis):
-                </Text>
-                <View style={styles.difficultyRadioContainer}>
-                  {(['dasar', 'menengah', 'sulit', 'eksklusif'] as DifficultyLevel[]).map((level) => {
-                    const cfg = DIFFICULTY_CONFIG[level];
-                    const isSelected = uploadDifficulty === level;
-                    return (
-                      <Pressable
-                        key={level}
-                        style={[
-                          styles.diffRadioOption,
-                          isSelected && styles.diffRadioOptionSelected,
-                        ]}
-                        onPress={() => setUploadDifficulty(level)}
-                      >
-                        <View style={styles.diffRadioRow}>
-                          <Text
-                            style={[
-                              styles.diffRadioTitle,
-                              isSelected && styles.diffRadioTitleSelected,
-                            ]}
-                          >
-                            {cfg.label}
-                          </Text>
-                          <Text style={styles.diffRadioPrice}>
-                            {formatRupiah(cfg.price)}
-                            {level === 'dasar' ? ' (Paling Murah)' : ''}
-                          </Text>
-                        </View>
-                        <Text style={styles.diffRadioDesc}>{cfg.description}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {/* Deskripsi */}
-                <Text style={styles.inputLabel}>Deskripsi Ringkas Catatan:</Text>
-                <TextInput
-                  style={[styles.textInputStyle, { height: 75, textAlignVertical: 'top' }]}
-                  placeholder="Deskripsikan isi catatan dan manfaatnya bagi mahasiswa..."
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  value={uploadDesc}
-                  onChangeText={setUploadDesc}
-                />
-
-                {/* File Dokumen Simulasi */}
-                <View style={styles.filePickerBox}>
-                  <NotesStackIcon size={24} color="#0284C7" />
-                  <Text style={styles.filePickerTitle}>Dokumen PDF Terlampir (2.4 MB)</Text>
-                  <Text style={styles.filePickerSub}>Format .pdf tervalidasi siap tayang</Text>
-                </View>
-              </ScrollView>
-
-              {/* Tombol Aksi Unggah */}
-              <View style={styles.modalActionsRow}>
-                <Pressable
-                  style={styles.cancelBtn}
-                  onPress={() => setIsUploadModalVisible(false)}
-                >
-                  <Text style={styles.cancelBtnText}>Batal</Text>
-                </Pressable>
-
-                <Pressable style={styles.confirmPayBtn} onPress={handlePublishUpload}>
-                  <Text style={styles.confirmPayBtnText}>
-                    Publikasikan ({formatRupiah(DIFFICULTY_CONFIG[uploadDifficulty].price)})
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
+          <UnggahScreen
+            isModal
+            onClose={() => setIsUploadModalVisible(false)}
+            onSuccess={(createdNote?: any) => {
+              // Tambahkan catatan baru ke global state saat upload sukses dari modal
+              if (createdNote) {
+                setNotes((prev) => {
+                  const alreadyExists = prev.some((n) => n.id === createdNote.id);
+                  if (alreadyExists) return prev;
+                  return [createdNote, ...prev];
+                });
+              }
+              setIsUploadModalVisible(false);
+              setActiveTab('profil');
+            }}
+          />
         </Modal>
       </View>
     </View>

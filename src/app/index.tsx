@@ -1,26 +1,23 @@
-import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 const PROGRESS_BAR_WIDTH = 220;
 
 // 1. Icon Topi Wisuda (Ruang Kolaborasi Akademik)
-function GraduationCapIcon({ size = 18, color = '#0284C7' }: { size?: number; color?: string }) {
+function GraduationCapIcon({
+  size = 18,
+  color = "#0284C7",
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {/* Bagian atas topi (Diamond Mortarboard) */}
-      <Path
-        d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z"
-        fill={color}
-      />
+      <Path d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z" fill={color} />
       {/* Bagian bawah topi (Skull Cap) */}
       <Path
         d="M5 13.18V17.5C5 19.99 8.13 22 12 22C15.87 22 19 19.99 19 17.5V13.18L12 17L5 13.18Z"
@@ -31,7 +28,13 @@ function GraduationCapIcon({ size = 18, color = '#0284C7' }: { size?: number; co
 }
 
 // 2. Icon Perisai Terverifikasi (Aman & Terverifikasi)
-function ShieldCheckIcon({ size = 14, color = '#0284C7' }: { size?: number; color?: string }) {
+function ShieldCheckIcon({
+  size = 14,
+  color = "#0284C7",
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -68,7 +71,7 @@ export default function SplashScreenView() {
   useEffect(() => {
     // Otomatis berpindah ke halaman Login setelah splash screen selesai (~2.8 detik)
     const timer = setTimeout(() => {
-      router.replace('/login');
+      router.replace("/login");
     }, 2800);
     return () => clearTimeout(timer);
   }, [router]);
@@ -76,7 +79,7 @@ export default function SplashScreenView() {
   return (
     <Pressable
       style={styles.outerContainer}
-      onPress={() => router.replace('/login')}
+      onPress={() => router.replace("/login")}
     >
       <View style={styles.screenWrapper}>
         {/* Ambient warm glow di sisi kanan bawah sesuai gambar */}
@@ -98,7 +101,13 @@ export default function SplashScreenView() {
               </RadialGradient>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="#FFFFFF" />
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#warmGlow)" />
+            <Rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="url(#warmGlow)"
+            />
           </Svg>
         </View>
 
@@ -129,7 +138,8 @@ export default function SplashScreenView() {
 
             {/* Slogan / Deskripsi */}
             <Text style={styles.tagline}>
-              Satu platform terpercaya untuk semua{'\n'}catatan kuliah & rangkuman materi.
+              Satu platform terpercaya untuk semua{"\n"}catatan kuliah &
+              rangkuman materi.
             </Text>
 
             {/* Badge Ruang Kolaborasi Akademik */}
@@ -152,7 +162,9 @@ export default function SplashScreenView() {
             {/* Status Loading */}
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
-              <Text style={styles.statusText}>MENYIAPKAN RIBUAN CATATAN KULIAH...</Text>
+              <Text style={styles.statusText}>
+                MENYIAPKAN RIBUAN CATATAN KULIAH...
+              </Text>
             </View>
 
             {/* Keamanan & Verifikasi */}
@@ -162,7 +174,9 @@ export default function SplashScreenView() {
             </View>
 
             {/* Inisiatif Kampus */}
-            <Text style={styles.footerText}>Inisiatif Kolaboratif Mahasiswa UMM</Text>
+            <Text style={styles.footerText}>
+              Inisiatif Kolaboratif Mahasiswa UMM
+            </Text>
           </View>
         </SafeAreaView>
       </View>
@@ -173,22 +187,22 @@ export default function SplashScreenView() {
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   screenWrapper: {
     flex: 1,
-    width: '100%',
+    width: "100%",
     maxWidth: 440,
-    backgroundColor: 'transparent',
-    position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: "transparent",
+    position: "relative",
+    overflow: "hidden",
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
   },
   topSpacer: {
@@ -198,20 +212,20 @@ const styles = StyleSheet.create({
     flex: 1.35,
   },
   mainContent: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   logoCard: {
     width: 142,
     height: 126,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     // Shadow lembut dan elegan
     ...Platform.select({
       ios: {
-        shadowColor: '#0A2540',
+        shadowColor: "#0A2540",
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.08,
         shadowRadius: 20,
@@ -220,40 +234,40 @@ const styles = StyleSheet.create({
         elevation: 7,
       },
       default: {
-        boxShadow: '0 12px 28px -4px rgba(10, 37, 64, 0.09)',
+        boxShadow: "0 12px 28px -4px rgba(10, 37, 64, 0.09)",
       },
     }),
   },
   cardContentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 9,
   },
   cardTextCol: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   cardSimakText: {
     fontSize: 17.5,
-    fontWeight: '900',
-    color: '#0F2850',
+    fontWeight: "900",
+    color: "#0F2850",
     letterSpacing: 0.5,
   },
   cardCatatanText: {
     fontSize: 7.5,
-    fontWeight: '800',
-    color: '#0284C7',
+    fontWeight: "800",
+    color: "#0284C7",
     letterSpacing: 0.6,
     marginTop: 1.5,
   },
   mainTitle: {
     fontSize: 34,
-    fontWeight: '900',
-    color: '#0B2146',
+    fontWeight: "900",
+    color: "#0B2146",
     letterSpacing: 0.8,
     marginTop: 26,
   },
   badgeContainer: {
-    backgroundColor: '#DCEBFE',
+    backgroundColor: "#DCEBFE",
     paddingHorizontal: 16,
     paddingVertical: 5.5,
     borderRadius: 7,
@@ -261,31 +275,31 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#1D4ED8',
+    fontWeight: "800",
+    color: "#1D4ED8",
     letterSpacing: 1.2,
   },
   tagline: {
     fontSize: 14.5,
-    fontWeight: '400',
-    color: '#475569',
-    textAlign: 'center',
+    fontWeight: "400",
+    color: "#475569",
+    textAlign: "center",
     lineHeight: 22,
     marginTop: 16,
   },
   collabPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF9F2',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9F2",
     borderWidth: 1,
-    borderColor: '#FDEBD2',
+    borderColor: "#FDEBD2",
     paddingVertical: 9.5,
     paddingHorizontal: 18,
     borderRadius: 25,
     marginTop: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#D97706',
+        shadowColor: "#D97706",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -294,68 +308,68 @@ const styles = StyleSheet.create({
         elevation: 1,
       },
       default: {
-        boxShadow: '0 2px 8px rgba(217, 119, 6, 0.05)',
+        boxShadow: "0 2px 8px rgba(217, 119, 6, 0.05)",
       },
     }),
   },
   collabText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#26201B',
+    fontWeight: "700",
+    color: "#26201B",
     marginLeft: 8,
   },
   bottomSection: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
     paddingBottom: 24,
   },
   progressTrack: {
     width: PROGRESS_BAR_WIDTH,
     height: 6,
-    backgroundColor: '#ECE7E1',
+    backgroundColor: "#ECE7E1",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    width: '42%',
-    height: '100%',
-    backgroundColor: '#1E3A5F',
+    width: "42%",
+    height: "100%",
+    backgroundColor: "#1E3A5F",
     borderRadius: 3,
   },
   statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 12,
   },
   statusDot: {
     width: 5.5,
     height: 5.5,
     borderRadius: 3,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: "#1D4ED8",
     marginRight: 6,
   },
   statusText: {
     fontSize: 10.5,
-    fontWeight: '700',
-    color: '#334155',
+    fontWeight: "700",
+    color: "#334155",
     letterSpacing: 0.6,
   },
   verifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 10,
   },
   verifiedText: {
     fontSize: 11.5,
-    fontWeight: '500',
-    color: '#64748B',
+    fontWeight: "500",
+    color: "#64748B",
     marginLeft: 5,
   },
   footerText: {
     fontSize: 12,
-    fontWeight: '400',
-    color: '#94A3B8',
-    textAlign: 'center',
+    fontWeight: "400",
+    color: "#94A3B8",
+    textAlign: "center",
     marginTop: 4,
   },
 });
