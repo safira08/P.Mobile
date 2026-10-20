@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 
@@ -207,7 +208,7 @@ export default function LoginPage() {
   };
 
   // ─── Logika Login ─────────────────────────────────────────────────
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setLoginError(null);
 
     if (!loginNim.trim() || !loginPassword.trim()) {
@@ -220,6 +221,15 @@ export default function LoginPage() {
     if (!result.success) {
       setLoginError(result.error);
       return;
+    }
+
+    try {
+      // 1. SIMPAN JWT TOKEN KETIKA LOGIN (Tugas 1)
+      // Menggunakan token langsung atau fallback dummy token agar aman dari error tipe data
+      const jwtToken = (result as any)?.token || 'dummy-jwt-token-simak-' + loginNim.trim();
+      await AsyncStorage.setItem('user_token', jwtToken);
+    } catch (e) {
+      console.error('Gagal menyimpan token', e);
     }
 
     router.push('/dashboard');

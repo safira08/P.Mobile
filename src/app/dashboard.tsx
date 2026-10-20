@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -432,10 +433,17 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  // Fungsi Logout: hapus session & redirect ke login
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
+  /// Fungsi Logout: hapus token & session, lalu redirect ke login
+  const handleLogout = async () => {
+    try {
+      // Hapus JWT Token dari penyimpanan lokal (Tugas 3)
+      await AsyncStorage.removeItem('user_token');
+
+      logout(); // Memanggil fungsi dari AuthContext jika ada
+      router.replace('/login');
+    } catch (err) {
+      console.error('Gagal saat logout:', err);
+    }
   };
 
 
@@ -483,18 +491,29 @@ export default function DashboardScreen() {
     let isCancelled = false;
     const fetchBerandaNotes = async () => {
       try {
+        // AMBIL TOKEN DARI STORAGE (Tugas 2)
+        const token = await AsyncStorage.getItem('user_token');
+
         const response = await fetch(
-          'https://jsonplaceholder.typicode.com/posts?_limit=4'
+          'https://jsonplaceholder.typicode.com/posts?_limit=4',
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token || ''}`, // Token JWT dikirim di sini!
+            }
+          }
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data: any[] = await response.json();
         if (isCancelled) return;
+
         // Petakan hasil JSON ke struktur NoteItem SIMAK
         const COURSE_LIST: { course: string; code: string; difficulty: DifficultyLevel; price: number; color: string }[] = [
-          { course: 'Pemrograman Mobile',        code: 'CS-302', difficulty: 'dasar',     price: 10000, color: '#1E3A5F' },
-          { course: 'Struktur Data & Algoritma', code: 'CS-201', difficulty: 'sulit',     price: 25000, color: '#0284C7' },
-          { course: 'Basis Data Terdistribusi',  code: 'BD-103', difficulty: 'menengah',  price: 15000, color: '#0D9488' },
-          { course: 'Kecerdasan Buatan & ML',    code: 'AI-401', difficulty: 'eksklusif', price: 35000, color: '#7C3AED' },
+          { course: 'Pemrograman Mobile', code: 'CS-302', difficulty: 'dasar', price: 10000, color: '#1E3A5F' },
+          { course: 'Struktur Data & Algoritma', code: 'CS-201', difficulty: 'sulit', price: 25000, color: '#0284C7' },
+          { course: 'Basis Data Terdistribusi', code: 'BD-103', difficulty: 'menengah', price: 15000, color: '#0D9488' },
+          { course: 'Kecerdasan Buatan & ML', code: 'AI-401', difficulty: 'eksklusif', price: 35000, color: '#7C3AED' },
         ];
         const apiNotes: NoteItem[] = data.map((item, idx) => {
           const conf = COURSE_LIST[idx % COURSE_LIST.length];
@@ -2447,7 +2466,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
-  
+
   // ==========================================
   // NEW STYLES FOR PROFILE TAB
   // ==========================================
