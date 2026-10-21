@@ -28,7 +28,7 @@ export type RegisterResult =
 
 // Hasil login
 export type LoginResult =
-  | { success: true }
+  | { success: true; user?: UserData }
   | { success: false; error: string };
 
 interface AuthContextType {
@@ -191,15 +191,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Nomor Mahasiswa atau kata sandi salah' };
     }
 
-    setUser({
+    const userData: UserData = {
       nama: account.nama,
       nim: account.nim,
       semester: account.semester,
       jurusan: account.jurusan,
       email: account.email,
-    });
+    };
 
-    return { success: true };
+    setUser(userData);
+
+    return { success: true, user: userData };
   };
 
   // ── Logout ────────────────────────────────────────────────────────

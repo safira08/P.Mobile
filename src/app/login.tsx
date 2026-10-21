@@ -224,12 +224,19 @@ export default function LoginPage() {
     }
 
     try {
-      // 1. SIMPAN JWT TOKEN KETIKA LOGIN (Tugas 1)
-      // Menggunakan token langsung atau fallback dummy token agar aman dari error tipe data
+      // 1. Simpan JWT Token saat login
       const jwtToken = (result as any)?.token || 'dummy-jwt-token-simak-' + loginNim.trim();
       await AsyncStorage.setItem('user_token', jwtToken);
+
+      // 2. Simpan loginNim ke AsyncStorage dengan kunci 'user_nim'
+      await AsyncStorage.setItem('user_nim', loginNim.trim());
+
+      // Simpan nama pengguna jika ada
+      if (result.user?.nama) {
+        await AsyncStorage.setItem('user_nama', result.user.nama);
+      }
     } catch (e) {
-      console.error('Gagal menyimpan token', e);
+      console.error('Gagal menyimpan token / NIM ke AsyncStorage:', e);
     }
 
     router.push('/dashboard');

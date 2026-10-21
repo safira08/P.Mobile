@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -308,6 +308,60 @@ function LockIcon({ size = 14, color = '#B45309' }: { size?: number; color?: str
   );
 }
 
+// 16. Icon Wifi Terputus (Offline State)
+function OfflineWifiVectorIcon({ size = 44, color = '#DC2626' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M1 1L23 23" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M10.71 15.05A6 6 0 0 1 12 15a5.95 5.95 0 0 1 3.29.98" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M1.42 9a16 16 0 0 1 8.58-4.2" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M14 4.8A16.03 16.03 0 0 1 22.58 9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Circle cx="12" cy="19" r="1.5" fill={color} />
+    </Svg>
+  );
+}
+
+// 17. Icon Peringatan Kesalahan (Error State)
+function AlertTriangleVectorIcon({ size = 44, color = '#DC2626' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M10.29 3.86L1.82 18A2 2 0 0 0 3.55 21H20.45A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M12 9V13" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Circle cx="12" cy="17" r="1.2" fill={color} />
+    </Svg>
+  );
+}
+
+// 18. Icon Muat Ulang (Retry / Coba Lagi)
+function RetryVectorIcon({ size = 18, color = '#FFFFFF' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M23 4V10H17"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20.49 15A9 9 0 1 1 21.21 8L23 10"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // ==========================================
 // DATA UTAMA CATATAN & RANGKUMAN KAMPUS
 // ==========================================
@@ -433,11 +487,32 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
+  // State dinamis untuk data akun dari AsyncStorage
+  const [storedNim, setStoredNim] = useState<string>('');
+  const [storedNama, setStoredNama] = useState<string>('');
+
+  // Ambil nilai 'user_nim' & 'user_nama' dari AsyncStorage saat dashboard dibuka
+  useEffect(() => {
+    const loadStoredUserData = async () => {
+      try {
+        const savedNim = await AsyncStorage.getItem('user_nim');
+        const savedNama = await AsyncStorage.getItem('user_nama');
+        if (savedNim) setStoredNim(savedNim);
+        if (savedNama) setStoredNama(savedNama);
+      } catch (err) {
+        console.error('Gagal mengambil user_nim dari AsyncStorage:', err);
+      }
+    };
+    loadStoredUserData();
+  }, []);
+
   /// Fungsi Logout: hapus token & session, lalu redirect ke login
   const handleLogout = async () => {
     try {
-      // Hapus JWT Token dari penyimpanan lokal (Tugas 3)
+      // Hapus JWT Token & data sesi dari penyimpanan lokal
       await AsyncStorage.removeItem('user_token');
+      await AsyncStorage.removeItem('user_nim');
+      await AsyncStorage.removeItem('user_nama');
 
       logout(); // Memanggil fungsi dari AuthContext jika ada
       router.replace('/login');
@@ -448,8 +523,8 @@ export default function DashboardScreen() {
 
 
   // Active Bottom Navigation Tab: 'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'
-  // Default dibuka di 'profil' agar langsung identik persis dengan gambar screenshot user!
-  const [activeTab, setActiveTab] = useState<'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'>('profil');
+  // Default dibuka di 'beranda' untuk menampilkan halaman fetch data materi kuliah
+  const [activeTab, setActiveTab] = useState<'beranda' | 'carimk' | 'unggah' | 'bookmark' | 'profil'>('beranda');
 
   // State Daftar Catatan
   const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
@@ -473,9 +548,10 @@ export default function DashboardScreen() {
   const [downloadedNotes, setDownloadedNotes] = useState<NoteItem[]>([]);
 
   // =========================================================================
-  // STATE DINAMIS: DATA BERANDA/EXPLORE (GET API + Fallback)
+  // STATE DINAMIS: DATA BERANDA/EXPLORE (GET API + Loading & Error State)
   // =========================================================================
   const [berandaLoading, setBerandaLoading] = useState<boolean>(true);
+  const [berandaError, setBerandaError] = useState<string | null>(null);
 
   // Filter di Beranda & Cari MK
   const [searchQuery, setSearchQuery] = useState('');
@@ -483,82 +559,77 @@ export default function DashboardScreen() {
   const [difficultyFilter, setDifficultyFilter] = useState<'semua' | DifficultyLevel>('semua');
 
   // =========================================================================
-  // GET API BERANDA: Ambil daftar materi dari JSONPlaceholder (simulasi)
-  // Endpoint: 'https://jsonplaceholder.typicode.com/posts?_limit=4'
-  // Petakan hasil JSON ke kartu materi SIMAK (dengan FALLBACK ke INITIAL_NOTES)
+  // GET API BERANDA: Ambil daftar materi dari API
+  // Mengimplementasikan Error Handling, Loading State, Offline State, & Retry
   // =========================================================================
-  useEffect(() => {
-    let isCancelled = false;
-    const fetchBerandaNotes = async () => {
-      try {
-        // AMBIL TOKEN DARI STORAGE (Tugas 2)
-        const token = await AsyncStorage.getItem('user_token');
+  const fetchBerandaNotes = useCallback(async () => {
+    setBerandaLoading(true);
+    setBerandaError(null);
 
-        const response = await fetch(
-          'https://jsonplaceholder.typicode.com/posts?_limit=4',
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token || ''}`, // Token JWT dikirim di sini!
-            }
-          }
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data: any[] = await response.json();
-        if (isCancelled) return;
+    try {
+      // Ambil token JWT dari AsyncStorage jika ada
+      const token = await AsyncStorage.getItem('user_token');
 
-        // Petakan hasil JSON ke struktur NoteItem SIMAK
-        const COURSE_LIST: { course: string; code: string; difficulty: DifficultyLevel; price: number; color: string }[] = [
-          { course: 'Pemrograman Mobile', code: 'CS-302', difficulty: 'dasar', price: 10000, color: '#1E3A5F' },
-          { course: 'Struktur Data & Algoritma', code: 'CS-201', difficulty: 'sulit', price: 25000, color: '#0284C7' },
-          { course: 'Basis Data Terdistribusi', code: 'BD-103', difficulty: 'menengah', price: 15000, color: '#0D9488' },
-          { course: 'Kecerdasan Buatan & ML', code: 'AI-401', difficulty: 'eksklusif', price: 35000, color: '#7C3AED' },
-        ];
-        const apiNotes: NoteItem[] = data.map((item, idx) => {
-          const conf = COURSE_LIST[idx % COURSE_LIST.length];
-          return {
-            id: `api-${item.id}`,
-            title: item.title
-              ? item.title.charAt(0).toUpperCase() + item.title.slice(1)
-              : `Catatan ${conf.course} #${item.id}`,
-            description: item.body
-              ? item.body.replace(/\n/g, ' ').slice(0, 120) + '…'
-              : `Rangkuman lengkap ${conf.course} siap diunduh.`,
-            course: conf.course,
-            courseCode: conf.code,
-            semester: `Semester ${(idx % 6) + 1}`,
-            pages: 20 + (item.id % 20),
-            downloads: item.id * 7,
-            upvotes: item.id * 3,
-            author: 'martin',
-            authorNim: '2206812390',
-            verified: true,
-            timeAgo: `${(idx + 1) * 2} hari lalu`,
-            difficulty: conf.difficulty,
-            difficultyLabel: DIFFICULTY_CONFIG[conf.difficulty].label,
-            price: conf.price,
-            color: conf.color,
-            purchased: false,
-            bookmarked: false,
-          };
-        });
-        // Gabungkan: catatan API di awal, lalu catatan asli yang bukan duplikat ID
-        setNotes((prev) => {
-          const existingIds = new Set(apiNotes.map((n) => n.id));
-          const nonDuplicates = prev.filter((n) => !existingIds.has(n.id) && !n.id.startsWith('api-'));
-          return [...apiNotes, ...nonDuplicates];
-        });
-      } catch (err: any) {
-        console.warn('GET API Beranda Error (Fallback aktif):', err?.message);
-        // Fallback: tetap gunakan INITIAL_NOTES jika API gagal
-      } finally {
-        if (!isCancelled) setBerandaLoading(false);
+      const response = await fetch(
+        'https://jsonplaceholder.typicode.com/posts?_limit=4',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token || ''}`,
+          },
+        }
+      );
+
+      // Periksa response.ok dari fetch. Jika error HTTP (4xx / 5xx), lempar pesan error yang sesuai.
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new Error(`Terjadi kesalahan pada server (HTTP ${response.status}). Silakan coba beberapa saat lagi.`);
+        } else if (response.status === 404) {
+          throw new Error(`Data tidak ditemukan (HTTP 404). Silakan periksa kembali tautan API.`);
+        } else if (response.status === 401 || response.status === 403) {
+          throw new Error(`Akses ditolak (HTTP ${response.status}). Sesi Anda tidak sah atau telah berakhir.`);
+        } else if (response.status >= 400) {
+          throw new Error(`Permintaan gagal diproses (HTTP ${response.status}). Periksa izin atau parameter permintaan.`);
+        } else {
+          throw new Error(`Gagal memuat data (HTTP ${response.status})`);
+        }
       }
-    };
-    fetchBerandaNotes();
-    return () => { isCancelled = true; };
+
+      await response.json();
+
+      // Hilangkan dummy post berbahasa Latin dari placeholder dan tampilkan daftar materi kuliah asli
+      setNotes((prev) => {
+        const cleaned = prev.filter((n) => !n.id.startsWith('api-'));
+        return cleaned.length > 0 ? cleaned : INITIAL_NOTES;
+      });
+      setBerandaError(null);
+    } catch (err: unknown) {
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      console.warn('GET API Beranda Error:', rawMessage);
+
+      // Tangani Network request failed jika tidak ada koneksi internet (offline)
+      const isNetworkError =
+        rawMessage.toLowerCase().includes('network request failed') ||
+        rawMessage.toLowerCase().includes('failed to fetch') ||
+        rawMessage.toLowerCase().includes('networkerror') ||
+        rawMessage.toLowerCase().includes('network error') ||
+        rawMessage.toLowerCase().includes('enotfound') ||
+        rawMessage.toLowerCase().includes('offline');
+
+      if (isNetworkError) {
+        setBerandaError('Tidak ada koneksi internet. Periksa koneksi Anda dan coba lagi.');
+      } else {
+        setBerandaError(rawMessage || 'Terjadi kesalahan saat memuat data.');
+      }
+    } finally {
+      setBerandaLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBerandaNotes();
+  }, [fetchBerandaNotes]);
 
   // ==========================================
   // LOGIKA PEMBAYARAN & UNDUH MATERI BERBAYAR
@@ -655,14 +726,14 @@ export default function DashboardScreen() {
   // RENDER KONTEN TAB: PROFIL (PERSIS SESUAI SCREENSHOT USER)
   // =========================================================================
   const renderProfileTab = () => {
-    // Data dinamis dari AuthContext
-    const displayName = user?.nama ?? 'Mahasiswa';
-    const displayNim = user?.nim ?? '-';
+    // Data dinamis dari AsyncStorage ('user_nim' & 'user_nama') dan AuthContext (tidak hardcoded)
+    const displayNim = storedNim || user?.nim || '-';
+    const displayName = storedNama || user?.nama || 'Mahasiswa';
     const displayJurusan = user?.jurusan ?? 'S1 Informatika';
     const displaySemester = user?.semester ?? 'Semester 5';
 
-    // Ambil daftar catatan milik user
-    const myNotes = notes.filter(n => n.authorNim === user?.nim || n.author === user?.nama);
+    // Ambil daftar catatan milik user secara dinamis
+    const myNotes = notes.filter(n => n.authorNim === displayNim || n.author === displayName);
     const totalUpvotes = myNotes.reduce((sum, n) => sum + n.upvotes, 0);
 
     return (
@@ -798,12 +869,41 @@ export default function DashboardScreen() {
       return matchQuery && matchDiff;
     });
 
-    // Tampilkan loading spinner saat GET API Beranda sedang berjalan
+    // 1. Loading State: Tampilkan ActivityIndicator dan teks 'Memuat data...' saat loading === true
     if (berandaLoading) {
       return (
-        <View style={[styles.tabContentContainer, { alignItems: 'center', justifyContent: 'center', paddingTop: 60 }]}>
+        <View style={styles.stateCenterContainer}>
           <ActivityIndicator size="large" color="#0F2850" />
-          <Text style={{ marginTop: 12, color: '#64748B', fontSize: 13 }}>Memuat daftar materi kuliah...</Text>
+          <Text style={styles.loadingStateText}>Memuat data...</Text>
+        </View>
+      );
+    }
+
+    // 2. Error / Offline State: Jika error/offline, sembunyikan data dan tampilkan UI pesan kesalahan + tombol 'Coba Lagi'
+    if (berandaError) {
+      const isOffline = berandaError.includes('koneksi internet');
+      return (
+        <View style={styles.stateCenterContainer}>
+          <View style={[styles.errorIconBadge, isOffline ? styles.offlineBadgeBg : styles.errorBadgeBg]}>
+            {isOffline ? (
+              <OfflineWifiVectorIcon size={46} color="#DC2626" />
+            ) : (
+              <AlertTriangleVectorIcon size={46} color="#DC2626" />
+            )}
+          </View>
+          <Text style={styles.errorStateTitle}>
+            {isOffline ? 'Koneksi Terputus' : 'Gagal Memuat Data'}
+          </Text>
+          <Text style={styles.errorStateMessage}>{berandaError}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+            onPress={fetchBerandaNotes}
+            accessibilityRole="button"
+            accessibilityLabel="Coba Lagi"
+          >
+            <RetryVectorIcon size={18} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </Pressable>
         </View>
       );
     }
@@ -2647,5 +2747,74 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 14,
     color: '#0F172A',
-  }
+  },
+  stateCenterContainer: {
+    paddingVertical: 70,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingStateText: {
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  errorIconBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorBadgeBg: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  offlineBadgeBg: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorStateTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F2850',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorStateMessage: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F2850',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#0F2850',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  retryButtonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });
