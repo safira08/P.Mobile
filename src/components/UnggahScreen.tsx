@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,9 +10,14 @@ import {
   Text,
   TextInput,
   View,
+  Vibration,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Accelerometer } from 'expo-sensors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import AccelerometerCard from './AccelerometerCard';
+import DocumentUploadPicker from './DocumentUploadPicker';
 import { useAuth } from '../context/AuthContext';
 
 // ==========================================
@@ -240,13 +245,21 @@ export default function UnggahScreen({
   const [deskripsi, setDeskripsi] = useState<string>('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
-  // State Berkas PDF
+  // State Berkas Upload (PDF atau foto dokumentasi)
   const [file, setFile] = useState<UploadFilePayload>({
     uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
     name: 'catatan_kuliah_lengkap.pdf',
     type: 'application/pdf',
     size: '2.4 MB',
   });
+  const [uploadedPhoto, setUploadedPhoto] = useState<UploadFilePayload | null>(null);
+  const [showUploadMenu, setShowUploadMenu] = useState<boolean>(false);
+
+  // State sensor Accelerometer & shake detection
+  const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
+  const [shakeDetected, setShakeDetected] = useState(false);
+  const [shakeCount, setShakeCount] = useState(0);
+  const lastShakeRef = useRef(0);
 
   // State Status Unggah & Feedback Modal
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -323,6 +336,123 @@ export default function UnggahScreen({
       isCancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const subscription = Accelerometer.addListener((sensorData) => {
+      setAccelerometerData(sensorData);
+
+      const magnitude = Math.sqrt(
+        sensorData.x * sensorData.x +
+          sensorData.y * sensorData.y +
+          sensorData.z * sensorData.z
+      );
+
+      const now = Date.now();
+      if (magnitude > 1.5 && now - lastShakeRef.current > 1000) {
+        lastShakeRef.current = now;
+        setShakeDetected(true);
+        setShakeCount((prev) => prev + 1);
+        Vibration.vibrate(250);
+
+        setTimeout(() => setShakeDetected(false), 500);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const handlePermissionRequest = async (mode: 'camera' | 'gallery') => {
+    try {
+      const permission =
+        mode === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Izin Ditolak',
+          mode === 'camera'
+            ? 'Akses kamera dibutuhkan untuk mengambil foto dokumen.'
+            : 'Akses galeri dibutuhkan untuk memilih foto dokumen.'
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('Permission error:', error);
+      Alert.alert('Terjadi Kesalahan', 'Tidak dapat meminta izin akses saat ini.');
+      return false;
+    }
+  };
+
+  const setPickedAsset = (asset: ImagePicker.ImagePickerAsset) => {
+    const fileName = asset.fileName || `dokumen-simak-${Date.now()}.jpg`;
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const fileSize = asset.fileSize ?? 0;
+    const sizeLabel = fileSize >= 1024 * 1024
+      ? `${(fileSize / (1024 * 1024)).toFixed(2)} MB`
+      : `${Math.round(fileSize / 1024)} KB`;
+
+    const nextFile: UploadFilePayload = {
+      uri: asset.uri,
+      name: fileName,
+      type: mimeType,
+      size: sizeLabel,
+      rawFile: {
+        uri: asset.uri,
+        name: fileName,
+        type: mimeType,
+      },
+    };
+
+    setFile(nextFile);
+    setUploadedPhoto(nextFile);
+  };
+
+  const handlePickFromGallery = async () => {
+    const hasPermission = await handlePermissionRequest('gallery');
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        setPickedAsset(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Gagal Memilih Foto', 'Foto dari galeri tidak dapat diproses saat ini.');
+      console.warn('Gallery pick failed:', error);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    const hasPermission = await handlePermissionRequest('camera');
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [4, 3],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        setPickedAsset(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Gagal Mengambil Foto', 'Kamera tidak dapat digunakan saat ini.');
+      console.warn('Camera capture failed:', error);
+    }
+  };
 
   // =========================================================================
   // FUNGSI 1: UBAH FILE PDF (Document Picker Browser / Native File Explorer)
@@ -449,9 +579,9 @@ export default function UnggahScreen({
       return;
     }
 
-    // Validasi Berkas PDF
+    // Validasi Berkas Dokumen / Foto
     if (!file || !file.uri) {
-      Alert.alert('Berkas Belum Ada', 'Silakan lampirkan berkas PDF catatan kuliah.');
+      Alert.alert('Berkas Belum Ada', 'Silakan pilih dokumen PDF atau foto dokumen terlebih dahulu.');
       return;
     }
 
@@ -461,14 +591,18 @@ export default function UnggahScreen({
     try {
       // 3. Susun FormData dengan struktur payload sesuai spesifikasi
       const formData = new FormData();
+      const mimeType = file.type?.startsWith('image/') ? file.type : 'application/pdf';
 
       if (file.rawFile) {
-        formData.append('file', file.rawFile);
+        formData.append('file', {
+          ...file.rawFile,
+          type: mimeType,
+        } as any);
       } else {
         formData.append('file', {
           uri: file.uri,
           name: file.name,
-          type: 'application/pdf',
+          type: mimeType,
         } as any);
       }
 
@@ -526,6 +660,13 @@ export default function UnggahScreen({
       setJudulCatatan('');
       setDeskripsi('');
       setTingkatKesulitan('Tingkat Dasar');
+      setUploadedPhoto(null);
+      setFile({
+        uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
+        name: 'catatan_kuliah_lengkap.pdf',
+        type: 'application/pdf',
+        size: '2.4 MB',
+      });
       if (listMataKuliah.length > 0) setMataKuliah(listMataKuliah[0]);
       if (listSemester.length > 0) setSemester(listSemester[4] || listSemester[0]);
     } catch (err: any) {
@@ -559,6 +700,13 @@ export default function UnggahScreen({
       setJudulCatatan('');
       setDeskripsi('');
       setTingkatKesulitan('Tingkat Dasar');
+      setUploadedPhoto(null);
+      setFile({
+        uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
+        name: 'catatan_kuliah_lengkap.pdf',
+        type: 'application/pdf',
+        size: '2.4 MB',
+      });
     } finally {
       // Matikan status isUploading
       setIsUploading(false);
@@ -616,6 +764,14 @@ export default function UnggahScreen({
             <Text style={styles.initialLoadingTitle}>Mengambil data mata kuliah & semester...</Text>
           </View>
         )}
+
+        <AccelerometerCard
+          x={accelerometerData.x}
+          y={accelerometerData.y}
+          z={accelerometerData.z}
+          shakeDetected={shakeDetected}
+          shakeCount={shakeCount}
+        />
 
         <View style={styles.formContainer}>
           {/* 1. Judul Catatan */}
@@ -739,40 +895,14 @@ export default function UnggahScreen({
             </View>
           </View>
 
-          {/* 5. Berkas Dokumen PDF dengan Tombol "Ubah" */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Berkas Dokumen PDF <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <Pressable
-              style={styles.fileCard}
-              onPress={handlePickDocument}
-              disabled={isUploading}
-            >
-              <PdfFileIcon size={32} />
-              <View style={styles.fileDetailsCol}>
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {file.name}
-                </Text>
-                <Text style={styles.fileMeta}>
-                  {file.type} • {file.size || 'Siap tayang'}
-                </Text>
-                <View style={styles.fileValidatedBadge}>
-                  <Text style={styles.fileValidatedText}>✓ Berkas PDF Siap Diunggah</Text>
-                </View>
-              </View>
-
-              {/* Tombol "Ubah" Berkas PDF */}
-              <Pressable
-                style={styles.changeFileBtn}
-                onPress={handlePickDocument}
-                disabled={isUploading}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.changeFileBtnText}>Ubah</Text>
-              </Pressable>
-            </Pressable>
-          </View>
+          {/* 5. Berkas Dokumen / Foto (Upload via Kamera, Galeri, atau File) */}
+          <DocumentUploadPicker
+            file={file}
+            isUploading={isUploading}
+            onTakePhoto={handleTakePhoto}
+            onPickFromGallery={handlePickFromGallery}
+            onPickDocument={handlePickDocument}
+          />
 
           {/* 6. Deskripsi Ringkas */}
           <View style={styles.fieldGroup}>
@@ -1063,6 +1193,96 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+  sensorCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  sensorHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sensorTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#E2E8F0',
+  },
+  shakePill: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  shakePillActive: {
+    backgroundColor: '#F59E0B',
+  },
+  shakePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  sensorGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sensorValueBox: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  sensorLabel: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  sensorValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  sensorMeta: {
+    marginTop: 10,
+    fontSize: 11,
+    color: '#CBD5E1',
+  },
+  uploadSourceRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  uploadSourceBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  uploadSourcePrimary: {
+    backgroundColor: '#0F2850',
+    borderColor: '#0F2850',
+  },
+  uploadSourceSecondary: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  uploadSourceBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  uploadSourceBtnTextSecondary: {
+    color: '#0F172A',
+  },
   textInput: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
@@ -1183,6 +1403,12 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 12,
     ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
+  },
+  previewImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
   },
   fileDetailsCol: {
     flex: 1,
