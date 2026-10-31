@@ -2,6 +2,16 @@
 
 Platform berbagi catatan dan informasi perkuliahan antar mahasiswa. Dibuat karena informasi kuliah (catatan, rangkuman materi, info dosen, pengalaman mata kuliah) sering tersebar di banyak tempat — grup WhatsApp, drive pribadi, catatan orang lain — sehingga sulit ditemukan saat dibutuhkan. SIMAK menyatukan semua itu dalam satu platform yang mudah dicari.
 
+## ▶️ Menjalankan di Expo Go
+
+Jalankan aplikasi melalui:
+
+```bash
+npm start
+```
+
+Script ini akan otomatis memilih port yang tersedia agar QR code Expo Go tetap muncul meskipun port default `8081` sedang dipakai aplikasi lain.
+
 ## ✨ Fitur Utama
 
 - **Search Informasi** — cari catatan/materi berdasarkan mata kuliah, dosen, atau kata kunci

@@ -12,9 +12,17 @@ import {
   View,
   Vibration,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Accelerometer } from 'expo-sensors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+let ImagePicker: typeof import('expo-image-picker') | null = null;
+if (Platform.OS !== 'web') {
+  ImagePicker = require('expo-image-picker') as typeof import('expo-image-picker');
+}
+
+const Accelerometer =
+  Platform.OS === 'web'
+    ? null
+    : (require('expo-sensors') as typeof import('expo-sensors')).Accelerometer;
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import AccelerometerCard from './AccelerometerCard';
 import DocumentUploadPicker from './DocumentUploadPicker';
@@ -70,26 +78,6 @@ function SimakLogoIcon() {
       <Rect x="6" y="13" width="13" height="2.2" rx="1.1" fill="#FFFFFF" />
       <Rect x="6" y="18" width="13" height="2.2" rx="1.1" fill="#FFFFFF" />
       <Rect x="6" y="23" width="9.5" height="2.2" rx="1.1" fill="#FFFFFF" />
-    </Svg>
-  );
-}
-
-function PdfFileIcon({ size = 28, color = '#E11D48' }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z"
-        fill="#FEE2E2"
-        stroke={color}
-        strokeWidth="1.8"
-      />
-      <Path d="M14 2V8H20" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-      <Path
-        d="M9 13H10C10.5523 13 11 13.4477 11 14C11 14.5523 10.5523 15 10 15H9V13ZM9 13V17"
-        stroke={color}
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
     </Svg>
   );
 }
@@ -252,8 +240,6 @@ export default function UnggahScreen({
     type: 'application/pdf',
     size: '2.4 MB',
   });
-  const [uploadedPhoto, setUploadedPhoto] = useState<UploadFilePayload | null>(null);
-  const [showUploadMenu, setShowUploadMenu] = useState<boolean>(false);
 
   // State sensor Accelerometer & shake detection
   const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
@@ -338,6 +324,10 @@ export default function UnggahScreen({
   }, []);
 
   useEffect(() => {
+    if (Platform.OS === 'web' || !Accelerometer) {
+      return;
+    }
+
     const subscription = Accelerometer.addListener((sensorData) => {
       setAccelerometerData(sensorData);
 
@@ -363,7 +353,66 @@ export default function UnggahScreen({
     };
   }, []);
 
+  const updateSelectedFile = (nextFile: UploadFilePayload) => {
+    setFile(nextFile);
+  };
+
+  const buildWebFilePayload = (pickedFile: File): UploadFilePayload => {
+    const fileName = pickedFile.name || `dokumen-simak-${Date.now()}.jpg`;
+    const mimeType = pickedFile.type || 'image/jpeg';
+    const fileSize = pickedFile.size ?? 0;
+    const sizeLabel = fileSize >= 1024 * 1024
+      ? `${(fileSize / (1024 * 1024)).toFixed(2)} MB`
+      : `${Math.round(fileSize / 1024)} KB`;
+
+    return {
+      uri: URL.createObjectURL(pickedFile),
+      name: fileName,
+      type: mimeType,
+      size: sizeLabel,
+      rawFile: pickedFile,
+    };
+  };
+
+  const openWebMediaPicker = (mode: 'gallery' | 'camera') => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = mode === 'camera' ? 'image/*' : 'image/*';
+    input.style.display = 'none';
+
+    if (mode === 'camera') {
+      input.setAttribute('capture', 'environment');
+    }
+
+    input.onchange = (event: any) => {
+      const pickedFile: File | undefined = event.target?.files?.[0];
+      if (!pickedFile) {
+        return;
+      }
+
+      const nextFile = buildWebFilePayload(pickedFile);
+      updateSelectedFile(nextFile);
+      input.value = '';
+    };
+
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(() => {
+      if (document.body.contains(input)) {
+        document.body.removeChild(input);
+      }
+    }, 1000);
+  };
+
   const handlePermissionRequest = async (mode: 'camera' | 'gallery') => {
+    if (Platform.OS === 'web' || !ImagePicker) {
+      return true;
+    }
+
     try {
       const permission =
         mode === 'camera'
@@ -388,7 +437,7 @@ export default function UnggahScreen({
     }
   };
 
-  const setPickedAsset = (asset: ImagePicker.ImagePickerAsset) => {
+  const setPickedAsset = (asset: import('expo-image-picker').ImagePickerAsset) => {
     const fileName = asset.fileName || `dokumen-simak-${Date.now()}.jpg`;
     const mimeType = asset.mimeType || 'image/jpeg';
     const fileSize = asset.fileSize ?? 0;
@@ -408,11 +457,15 @@ export default function UnggahScreen({
       },
     };
 
-    setFile(nextFile);
-    setUploadedPhoto(nextFile);
+    updateSelectedFile(nextFile);
   };
 
   const handlePickFromGallery = async () => {
+    if (Platform.OS === 'web' || !ImagePicker) {
+      openWebMediaPicker('gallery');
+      return;
+    }
+
     const hasPermission = await handlePermissionRequest('gallery');
     if (!hasPermission) return;
 
@@ -434,6 +487,11 @@ export default function UnggahScreen({
   };
 
   const handleTakePhoto = async () => {
+    if (Platform.OS === 'web' || !ImagePicker) {
+      openWebMediaPicker('camera');
+      return;
+    }
+
     const hasPermission = await handlePermissionRequest('camera');
     if (!hasPermission) return;
 
@@ -660,7 +718,6 @@ export default function UnggahScreen({
       setJudulCatatan('');
       setDeskripsi('');
       setTingkatKesulitan('Tingkat Dasar');
-      setUploadedPhoto(null);
       setFile({
         uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
         name: 'catatan_kuliah_lengkap.pdf',
@@ -700,7 +757,6 @@ export default function UnggahScreen({
       setJudulCatatan('');
       setDeskripsi('');
       setTingkatKesulitan('Tingkat Dasar');
-      setUploadedPhoto(null);
       setFile({
         uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
         name: 'catatan_kuliah_lengkap.pdf',

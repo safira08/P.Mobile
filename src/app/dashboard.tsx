@@ -1,9 +1,11 @@
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -14,6 +16,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+let ImagePicker: typeof import('expo-image-picker') | null = null;
+if (Platform.OS !== 'web') {
+  ImagePicker = require('expo-image-picker') as typeof import('expo-image-picker');
+}
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import UnggahScreen from '../components/UnggahScreen';
@@ -84,8 +91,16 @@ export const DIFFICULTY_CONFIG: Record<
 // SVG ICONS & AVATAR ILLUSTRATION (TANPA FOTO ORANG)
 // ==========================================
 
-// 1. Clean Stylized Student Vector Avatar (Bukan foto orang)
-function StudentVectorAvatar({ size = 70 }: { size?: number }) {
+// 1. Clean Stylized Student Vector Avatar (Bisa diganti dengan foto profil user)
+function StudentVectorAvatar({ size = 70, imageUri }: { size?: number; imageUri?: string | null }) {
+  if (imageUri) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#E2E8F0' }}>
+        <Image source={{ uri: imageUri }} style={{ width: size, height: size }} resizeMode="cover" />
+      </View>
+    );
+  }
+
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
       <Defs>
@@ -130,10 +145,10 @@ function StudentVectorAvatar({ size = 70 }: { size?: number }) {
 }
 
 // 2. Mini Header Avatar
-function MiniHeaderAvatar() {
+function MiniHeaderAvatar({ imageUri }: { imageUri?: string | null }) {
   return (
     <View style={styles.miniAvatarWrapper}>
-      <StudentVectorAvatar size={34} />
+      <StudentVectorAvatar size={34} imageUri={imageUri} />
     </View>
   );
 }
@@ -490,6 +505,20 @@ export default function DashboardScreen() {
   // State dinamis untuk data akun dari AsyncStorage
   const [storedNim, setStoredNim] = useState<string>('');
   const [storedNama, setStoredNama] = useState<string>('');
+  const [profileAvatarUri, setProfileAvatarUri] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const updateConnectionState = (state: NetInfoState) => {
+      const offline = !state.isConnected || state.isInternetReachable === false;
+      setIsOffline(offline);
+    };
+
+    NetInfo.fetch().then(updateConnectionState);
+
+    const unsubscribe = NetInfo.addEventListener(updateConnectionState);
+    return () => unsubscribe();
+  }, []);
 
   // Ambil nilai 'user_nim' & 'user_nama' dari AsyncStorage saat dashboard dibuka
   useEffect(() => {
@@ -497,8 +526,10 @@ export default function DashboardScreen() {
       try {
         const savedNim = await AsyncStorage.getItem('user_nim');
         const savedNama = await AsyncStorage.getItem('user_nama');
+        const savedAvatar = await AsyncStorage.getItem('profile_avatar_uri');
         if (savedNim) setStoredNim(savedNim);
         if (savedNama) setStoredNama(savedNama);
+        if (savedAvatar) setProfileAvatarUri(savedAvatar);
       } catch (err) {
         console.error('Gagal mengambil user_nim dari AsyncStorage:', err);
       }
@@ -513,12 +544,99 @@ export default function DashboardScreen() {
       await AsyncStorage.removeItem('user_token');
       await AsyncStorage.removeItem('user_nim');
       await AsyncStorage.removeItem('user_nama');
+      await AsyncStorage.removeItem('profile_avatar_uri');
 
+      setProfileAvatarUri(null);
       logout(); // Memanggil fungsi dari AuthContext jika ada
       router.replace('/login');
     } catch (err) {
       console.error('Gagal saat logout:', err);
     }
+  };
+
+  const handleProfileImageChange = async (source: 'camera' | 'gallery') => {
+    if (Platform.OS === 'web' || !ImagePicker) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      if (source === 'camera') {
+        input.setAttribute('capture', 'environment');
+      }
+      input.style.display = 'none';
+
+      input.onchange = async (event: any) => {
+        const pickedFile = event.target?.files?.[0];
+        if (!pickedFile) return;
+
+        const objectUrl = URL.createObjectURL(pickedFile);
+        setProfileAvatarUri(objectUrl);
+        await AsyncStorage.setItem('profile_avatar_uri', objectUrl);
+        input.value = '';
+      };
+
+      document.body.appendChild(input);
+      input.click();
+      setTimeout(() => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      }, 1000);
+      return;
+    }
+
+    if (!ImagePicker) {
+      Alert.alert('Tidak Tersedia', 'Pemilih foto tidak tersedia di browser ini.');
+      return;
+    }
+
+    try {
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Izin Ditolak',
+          source === 'camera'
+            ? 'Akses kamera dibutuhkan untuk mengganti foto profil.'
+            : 'Akses galeri dibutuhkan untuk memilih foto profil.'
+        );
+        return;
+      }
+
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.85,
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.85,
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            });
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        const nextUri = result.assets[0].uri;
+        setProfileAvatarUri(nextUri);
+        await AsyncStorage.setItem('profile_avatar_uri', nextUri);
+      }
+    } catch (error) {
+      console.warn('Profile image change failed:', error);
+      Alert.alert('Gagal Mengganti Foto', 'Foto profil tidak dapat diproses saat ini.');
+    }
+  };
+
+  const launchProfileImagePicker = () => {
+    Alert.alert('Ubah Foto Profil', 'Pilih sumber foto Anda:', [
+      { text: 'Ambil Foto', onPress: () => handleProfileImageChange('camera') },
+      { text: 'Pilih dari Galeri', onPress: () => handleProfileImageChange('gallery') },
+      { text: 'Batal', style: 'cancel' },
+    ]);
   };
 
 
@@ -567,6 +685,15 @@ export default function DashboardScreen() {
     setBerandaError(null);
 
     try {
+      const connectionState = await NetInfo.fetch();
+      const offline = !connectionState.isConnected || connectionState.isInternetReachable === false;
+      setIsOffline(offline);
+
+      if (offline) {
+        setBerandaError('Tidak ada koneksi internet. Nyalakan koneksi internet terlebih dahulu.');
+        return;
+      }
+
       // Ambil token JWT dari AsyncStorage jika ada
       const token = await AsyncStorage.getItem('user_token');
 
@@ -576,7 +703,7 @@ export default function DashboardScreen() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token || ''}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         }
       );
@@ -607,6 +734,7 @@ export default function DashboardScreen() {
     } catch (err: unknown) {
       const rawMessage = err instanceof Error ? err.message : String(err);
       console.warn('GET API Beranda Error:', rawMessage);
+      setIsOffline(false);
 
       // Tangani Network request failed jika tidak ada koneksi internet (offline)
       const isNetworkError =
@@ -618,7 +746,8 @@ export default function DashboardScreen() {
         rawMessage.toLowerCase().includes('offline');
 
       if (isNetworkError) {
-        setBerandaError('Tidak ada koneksi internet. Periksa koneksi Anda dan coba lagi.');
+        setIsOffline(true);
+        setBerandaError('Tidak ada koneksi internet. Nyalakan koneksi internet terlebih dahulu.');
       } else {
         setBerandaError(rawMessage || 'Terjadi kesalahan saat memuat data.');
       }
@@ -628,7 +757,11 @@ export default function DashboardScreen() {
   }, []);
 
   useEffect(() => {
-    fetchBerandaNotes();
+    const timer = setTimeout(() => {
+      void fetchBerandaNotes();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchBerandaNotes]);
 
   // ==========================================
@@ -741,12 +874,14 @@ export default function DashboardScreen() {
         {/* 1. Header Profil (Sesuai Gambar) */}
         <View style={styles.profileHeroCard}>
           <View style={styles.profileHeroRow}>
-            <View style={styles.avatarContainer}>
-              <StudentVectorAvatar size={74} />
-              <View style={styles.semesterAvatarBadge}>
-                <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
+            <Pressable onPress={launchProfileImagePicker}>
+              <View style={styles.avatarContainer}>
+                <StudentVectorAvatar size={74} imageUri={profileAvatarUri} />
+                <View style={styles.semesterAvatarBadge}>
+                  <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
+                </View>
               </View>
-            </View>
+            </Pressable>
             <View style={styles.profileTextCol}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                 <Text style={styles.profileName}>{displayName}</Text>
@@ -754,6 +889,9 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.profileNim}>NIM: {displayNim}</Text>
               <Text style={styles.profileMajor}>{displayJurusan} • {displaySemester}</Text>
+              <Pressable style={styles.profileEditButton} onPress={launchProfileImagePicker}>
+                <Text style={styles.profileEditButtonText}>Ubah foto profil</Text>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -881,7 +1019,7 @@ export default function DashboardScreen() {
 
     // 2. Error / Offline State: Jika error/offline, sembunyikan data dan tampilkan UI pesan kesalahan + tombol 'Coba Lagi'
     if (berandaError) {
-      const isOffline = berandaError.includes('koneksi internet');
+      const isOffline = berandaError.toLowerCase().includes('koneksi internet') || berandaError.toLowerCase().includes('network request failed') || berandaError.toLowerCase().includes('failed to fetch');
       return (
         <View style={styles.stateCenterContainer}>
           <View style={[styles.errorIconBadge, isOffline ? styles.offlineBadgeBg : styles.errorBadgeBg]}>
@@ -892,7 +1030,7 @@ export default function DashboardScreen() {
             )}
           </View>
           <Text style={styles.errorStateTitle}>
-            {isOffline ? 'Koneksi Terputus' : 'Gagal Memuat Data'}
+            {isOffline ? 'Error & Offline State' : 'Error State'}
           </Text>
           <Text style={styles.errorStateMessage}>{berandaError}</Text>
           <Pressable
@@ -1065,7 +1203,40 @@ export default function DashboardScreen() {
   // RENDER KONTEN TAB: CARI / MK
   // =========================================================================
   const renderCariMKTab = () => {
+    if (berandaError) {
+      const offlineState =
+        isOffline ||
+        berandaError.toLowerCase().includes('koneksi internet') ||
+        berandaError.toLowerCase().includes('network request failed') ||
+        berandaError.toLowerCase().includes('failed to fetch');
+      return (
+        <View style={styles.stateCenterContainer}>
+          <View style={[styles.errorIconBadge, offlineState ? styles.offlineBadgeBg : styles.errorBadgeBg]}>
+            {offlineState ? (
+              <OfflineWifiVectorIcon size={46} color="#DC2626" />
+            ) : (
+              <AlertTriangleVectorIcon size={46} color="#DC2626" />
+            )}
+          </View>
+          <Text style={styles.errorStateTitle}>
+            {offlineState ? 'Error & Offline State' : 'Error State'}
+          </Text>
+          <Text style={styles.errorStateMessage}>{berandaError}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+            onPress={fetchBerandaNotes}
+            accessibilityRole="button"
+            accessibilityLabel="Coba Lagi"
+          >
+            <RetryVectorIcon size={18} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
     const coursesList = [
+
       { code: 'CS-201', name: 'Struktur Data & Algoritma', count: 14, minPrice: 25000, level: 'Sulit' },
       { code: 'CS-302', name: 'Pemrograman Mobile', count: 9, minPrice: 10000, level: 'Dasar (Termurah)' },
       { code: 'IF-204', name: 'Jaringan Komputer', count: 11, minPrice: 15000, level: 'Menengah' },
@@ -1215,7 +1386,7 @@ export default function DashboardScreen() {
               </Pressable>
 
               <Pressable onPress={() => setActiveTab('profil')}>
-                <MiniHeaderAvatar />
+                <MiniHeaderAvatar imageUri={profileAvatarUri} />
               </Pressable>
             </View>
           </View>
@@ -1259,7 +1430,14 @@ export default function DashboardScreen() {
           {/* ========================================================================= */}
           <View style={styles.bottomNavContainer}>
             {/* Tab 1: Beranda */}
-            <Pressable style={styles.navItem} onPress={() => setActiveTab('beranda')}>
+            <Pressable
+            style={styles.navItem}
+            onPress={() => {
+              if (!berandaError) {
+                setActiveTab('beranda');
+              }
+            }}
+          >
               <HomeNavIcon size={22} color={activeTab === 'beranda' ? '#0F2850' : '#64748B'} />
               <Text style={[styles.navLabel, activeTab === 'beranda' && styles.navLabelActive]}>
                 Beranda
@@ -1267,7 +1445,14 @@ export default function DashboardScreen() {
             </Pressable>
 
             {/* Tab 2: Cari/MK */}
-            <Pressable style={styles.navItem} onPress={() => setActiveTab('carimk')}>
+            <Pressable
+              style={styles.navItem}
+              onPress={() => {
+                if (!berandaError) {
+                  setActiveTab('carimk');
+                }
+              }}
+            >
               <GraduationCapNavIcon size={22} color={activeTab === 'carimk' ? '#0F2850' : '#64748B'} />
               <Text style={[styles.navLabel, activeTab === 'carimk' && styles.navLabelActive]}>
                 Cari/MK
@@ -1277,7 +1462,11 @@ export default function DashboardScreen() {
             {/* Tab 3: UNGGAH (Raised Floating Center Dark Navy Button +) */}
             <Pressable
               style={styles.navRaisedCenterBtn}
-              onPress={() => setIsUploadModalVisible(true)}
+              onPress={() => {
+                if (!berandaError) {
+                  setIsUploadModalVisible(true);
+                }
+              }}
             >
               <View style={styles.raisedCircleButton}>
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -1288,7 +1477,14 @@ export default function DashboardScreen() {
             </Pressable>
 
             {/* Tab 4: Bookmark */}
-            <Pressable style={styles.navItem} onPress={() => setActiveTab('bookmark')}>
+            <Pressable
+              style={styles.navItem}
+              onPress={() => {
+                if (!berandaError) {
+                  setActiveTab('bookmark');
+                }
+              }}
+            >
               <BookmarkNavIcon size={20} color={activeTab === 'bookmark' ? '#0F2850' : '#64748B'} />
               <Text style={[styles.navLabel, activeTab === 'bookmark' && styles.navLabelActive]}>
                 Bookmark
@@ -1296,7 +1492,14 @@ export default function DashboardScreen() {
             </Pressable>
 
             {/* Tab 5: Profil (Aktif seperti pada screenshot) */}
-            <Pressable style={styles.navItem} onPress={() => setActiveTab('profil')}>
+            <Pressable
+              style={styles.navItem}
+              onPress={() => {
+                if (!berandaError) {
+                  setActiveTab('profil');
+                }
+              }}
+            >
               <ProfileNavIcon size={22} color={activeTab === 'profil' ? '#0F2850' : '#64748B'} />
               <Text style={[styles.navLabel, activeTab === 'profil' && styles.navLabelActive]}>
                 Profil
@@ -1618,6 +1821,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#334155',
+  },
+  profileEditButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#E0F2FE',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  profileEditButtonText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#0F2850',
   },
   profileUniv: {
     fontSize: 12,
@@ -2572,20 +2788,25 @@ const styles = StyleSheet.create({
   // ==========================================
   avatarContainer: {
     position: 'relative',
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
   },
   semesterAvatarBadge: {
     position: 'absolute',
-    bottom: -2,
     right: -2,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    borderWidth: 2,
+    bottom: 0,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
     borderColor: '#FFFFFF',
   },
   semesterAvatarText: {
-    color: '#FFFFFF',
+    color: '#0F2850',
     fontSize: 10,
     fontWeight: '800',
   },

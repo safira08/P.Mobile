@@ -1,5 +1,7 @@
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -12,7 +14,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 
@@ -191,6 +192,19 @@ export default function LoginPage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const updateConnectionState = (state: NetInfoState) => {
+      const offline = !state.isConnected || state.isInternetReachable === false;
+      setIsOffline(offline);
+    };
+
+    NetInfo.fetch().then(updateConnectionState);
+
+    const unsubscribe = NetInfo.addEventListener(updateConnectionState);
+    return () => unsubscribe();
+  }, []);
 
   // ── State Register ──
   const [regNama, setRegNama] = useState('');
@@ -210,6 +224,11 @@ export default function LoginPage() {
   // ─── Logika Login ─────────────────────────────────────────────────
   const handleLogin = async () => {
     setLoginError(null);
+
+    if (isOffline) {
+      setLoginError('Anda sedang offline. Nyalakan koneksi internet terlebih dahulu untuk masuk.');
+      return;
+    }
 
     if (!loginNim.trim() || !loginPassword.trim()) {
       setLoginError('Nomor Mahasiswa dan kata sandi wajib diisi');
@@ -245,6 +264,11 @@ export default function LoginPage() {
   // ─── Logika Register ──────────────────────────────────────────────
   const handleRegister = () => {
     const errors: { nim?: string; email?: string; general?: string } = {};
+
+    if (isOffline) {
+      setRegErrors({ general: 'Anda sedang offline. Nyalakan koneksi internet terlebih dahulu untuk mendaftar.' });
+      return;
+    }
 
     // Validasi field wajib
     if (!regNama.trim() || !regNim.trim() || !regEmail.trim() || !regPassword.trim()) {
@@ -355,6 +379,13 @@ export default function LoginPage() {
 
             {/* Form Card */}
             <View style={styles.formCard}>
+              {isOffline ? (
+                <View style={styles.offlineBanner}>
+                  <WarningIcon size={17} color="#B45309" />
+                  <Text style={styles.offlineBannerText}>Offline: Nyalakan koneksi internet terlebih dahulu untuk masuk.</Text>
+                </View>
+              ) : null}
+
               {activeTab === 'login' ? (
                 // ─── FORM LOGIN ────────────────────────────────────
                 <>
@@ -411,7 +442,12 @@ export default function LoginPage() {
 
                   {/* Tombol Masuk */}
                   <Pressable
-                    style={({ pressed }) => [styles.submitButton, pressed && styles.submitButtonPressed]}
+                    disabled={isOffline}
+                    style={({ pressed }) => [
+                      styles.submitButton,
+                      isOffline && styles.submitButtonDisabled,
+                      pressed && !isOffline && styles.submitButtonPressed,
+                    ]}
                     onPress={handleLogin}
                   >
                     <LoginIcon size={18} color="#FFFFFF" />
@@ -538,7 +574,12 @@ export default function LoginPage() {
 
                   {/* Tombol Daftar */}
                   <Pressable
-                    style={({ pressed }) => [styles.submitButton, pressed && styles.submitButtonPressed]}
+                    disabled={isOffline}
+                    style={({ pressed }) => [
+                      styles.submitButton,
+                      isOffline && styles.submitButtonDisabled,
+                      pressed && !isOffline && styles.submitButtonPressed,
+                    ]}
                     onPress={handleRegister}
                   >
                     <UserPlusIcon size={18} color="#FFFFFF" />
@@ -699,6 +740,13 @@ const styles = StyleSheet.create({
     marginTop: 14, gap: 10,
   },
   errorBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#DC2626', lineHeight: 18 },
+  offlineBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    marginBottom: 14, gap: 10,
+  },
+  offlineBannerText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#B45309', lineHeight: 18 },
   // ─── Validation Info ──────────────────────────────────────────────
   validationInfoBox: {
     marginTop: 12,
@@ -719,6 +767,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginTop: 18, gap: 8,
   },
+  submitButtonDisabled: { backgroundColor: '#94A3B8', opacity: 0.9 },
   submitButtonPressed: { opacity: 0.9 },
   submitButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   cardBottomDividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
