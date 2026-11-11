@@ -24,6 +24,13 @@ if (Platform.OS !== 'web') {
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import UnggahScreen from '../components/UnggahScreen';
+import {
+  pickDocumentFile,
+  pickImageFromGallery,
+  PickedMediaResult,
+  showMediaPickerError,
+  takePhotoWithCamera,
+} from '../utils/mediaPicker';
 
 // ==========================================
 // TIPE DATA & TINGKAT KESULITAN MATERI
@@ -500,7 +507,8 @@ function formatRupiah(amount: number): string {
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfilePhoto } = useAuth();
+  const [isProfileMediaPickerVisible, setIsProfileMediaPickerVisible] = useState(false);
 
   // State dinamis untuk data akun dari AsyncStorage
   const [storedNim, setStoredNim] = useState<string>('');
@@ -637,6 +645,40 @@ export default function DashboardScreen() {
       { text: 'Pilih dari Galeri', onPress: () => handleProfileImageChange('gallery') },
       { text: 'Batal', style: 'cancel' },
     ]);
+  };
+
+  const handleProfileMediaPick = async (source: 'camera' | 'gallery' | 'document') => {
+    setIsProfileMediaPickerVisible(false);
+
+    try {
+      let pickedMedia: PickedMediaResult | null = null;
+      if (source === 'camera') {
+        pickedMedia = await takePhotoWithCamera();
+      } else if (source === 'gallery') {
+        pickedMedia = await pickImageFromGallery();
+      } else {
+        pickedMedia = await pickDocumentFile('image/*');
+      }
+
+      if (!pickedMedia) {
+        return;
+      }
+
+      const hasImageExtension = /\.(avif|gif|jpe?g|png|webp)$/i.test(pickedMedia.name);
+      if (!pickedMedia.isImage && !hasImageExtension) {
+        showMediaPickerError('Berkas Bukan Gambar', new Error('Pilih berkas gambar untuk foto profil.'));
+        return;
+      }
+
+      updateProfilePhoto(pickedMedia.uri);
+    } catch (error) {
+      const title = source === 'camera'
+        ? 'Gagal Membuka Kamera'
+        : source === 'gallery'
+          ? 'Gagal Membuka Galeri'
+          : 'Gagal Membuka Dokumen';
+      showMediaPickerError(title, error);
+    }
   };
 
 
@@ -874,12 +916,29 @@ export default function DashboardScreen() {
         {/* 1. Header Profil (Sesuai Gambar) */}
         <View style={styles.profileHeroCard}>
           <View style={styles.profileHeroRow}>
+<<<<<<< Updated upstream
             <Pressable onPress={launchProfileImagePicker}>
               <View style={styles.avatarContainer}>
                 <StudentVectorAvatar size={74} imageUri={profileAvatarUri} />
                 <View style={styles.semesterAvatarBadge}>
                   <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
                 </View>
+=======
+            <View style={styles.avatarContainer}>
+              <Pressable
+                onPress={() => setIsProfileMediaPickerVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Pilih foto profil"
+              >
+                {user?.profileImageUri ? (
+                  <Image source={{ uri: user.profileImageUri }} style={styles.profileAvatarImage} />
+                ) : (
+                  <StudentVectorAvatar size={74} />
+                )}
+              </Pressable>
+              <View style={styles.semesterAvatarBadge}>
+                <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
+>>>>>>> Stashed changes
               </View>
             </Pressable>
             <View style={styles.profileTextCol}>
@@ -889,12 +948,60 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.profileNim}>NIM: {displayNim}</Text>
               <Text style={styles.profileMajor}>{displayJurusan} • {displaySemester}</Text>
+<<<<<<< Updated upstream
               <Pressable style={styles.profileEditButton} onPress={launchProfileImagePicker}>
                 <Text style={styles.profileEditButtonText}>Ubah foto profil</Text>
+=======
+              <Pressable
+                style={styles.editProfilePhotoButton}
+                onPress={() => setIsProfileMediaPickerVisible(true)}
+              >
+                <Text style={styles.editProfilePhotoText}>Ubah foto profil</Text>
+>>>>>>> Stashed changes
               </Pressable>
             </View>
           </View>
         </View>
+
+        <Modal
+          visible={isProfileMediaPickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsProfileMediaPickerVisible(false)}
+        >
+          <View style={styles.profileMediaPickerOverlay}>
+            <View style={styles.profileMediaPickerCard}>
+              <Text style={styles.profileMediaPickerTitle}>Pilih Foto Profil</Text>
+              <Text style={styles.profileMediaPickerSubtitle}>
+                Ambil foto, pilih dari galeri, atau pilih berkas gambar.
+              </Text>
+              <Pressable
+                style={styles.profileMediaPickerOption}
+                onPress={() => handleProfileMediaPick('camera')}
+              >
+                <Text style={styles.profileMediaPickerOptionText}>Kamera</Text>
+              </Pressable>
+              <Pressable
+                style={styles.profileMediaPickerOption}
+                onPress={() => handleProfileMediaPick('gallery')}
+              >
+                <Text style={styles.profileMediaPickerOptionText}>Galeri</Text>
+              </Pressable>
+              <Pressable
+                style={styles.profileMediaPickerOption}
+                onPress={() => handleProfileMediaPick('document')}
+              >
+                <Text style={styles.profileMediaPickerOptionText}>Dokumen Gambar</Text>
+              </Pressable>
+              <Pressable
+                style={styles.profileMediaPickerCancel}
+                onPress={() => setIsProfileMediaPickerVisible(false)}
+              >
+                <Text style={styles.profileMediaPickerCancelText}>Batal</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
 
         {/* 2. Stats Grid 2 Kolom */}
         <View style={styles.statsTwoRow}>
@@ -978,6 +1085,17 @@ export default function DashboardScreen() {
           <View style={styles.historyRightBadge}>
             <Text style={styles.historyRightBadgeText}>{downloadedNotes.length} File &gt;</Text>
           </View>
+        </Pressable>
+
+        <Pressable style={styles.todoProfileCard} onPress={() => router.push('/todo')}>
+          <View style={styles.todoProfileIconBox}>
+            <Text style={styles.todoProfileIcon}>✓</Text>
+          </View>
+          <View style={styles.historyTextCol}>
+            <Text style={styles.historyTitle}>Todo List</Text>
+            <Text style={styles.historySub}>Kelola dan cek daftar tugasmu</Text>
+          </View>
+          <Text style={styles.todoProfileArrow}>›</Text>
         </Pressable>
 
         {/* 5. Keluar Akun Button */}
@@ -2794,6 +2912,70 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#E2E8F0',
   },
+  profileAvatarImage: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 3,
+    borderColor: '#E0E7FF',
+  },
+  editProfilePhotoButton: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  editProfilePhotoText: {
+    color: '#2563EB',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  profileMediaPickerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  },
+  profileMediaPickerCard: {
+    width: '100%',
+    maxWidth: 360,
+    padding: 20,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+  },
+  profileMediaPickerTitle: {
+    color: '#0F2850',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  profileMediaPickerSubtitle: {
+    color: '#64748B',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  profileMediaPickerOption: {
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    marginTop: 8,
+  },
+  profileMediaPickerOptionText: {
+    color: '#1D4ED8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  profileMediaPickerCancel: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  profileMediaPickerCancelText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   semesterAvatarBadge: {
     position: 'absolute',
     right: -2,
@@ -2899,6 +3081,36 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     marginTop: 24,
     marginBottom: 12,
+  },
+  todoProfileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginTop: 10,
+    gap: 12,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
+  },
+  todoProfileIconBox: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#E0F2FE',
+  },
+  todoProfileIcon: {
+    color: '#0284C7',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  todoProfileArrow: {
+    color: '#64748B',
+    fontSize: 24,
+    fontWeight: '500',
   },
   historyIconBox: {
     width: 42,

@@ -26,6 +26,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Izinkan SIMAK mengakses foto untuk lampiran catatan dan foto profil.",
+          "cameraPermission": "Izinkan SIMAK menggunakan kamera untuk mengambil foto lampiran dan profil.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

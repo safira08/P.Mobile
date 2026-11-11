@@ -9,6 +9,7 @@ export interface UserData {
   semester: string;
   jurusan: string;
   email: string;
+  profileImageUri?: string;
 }
 
 // Data yang disimpan di "database" in-memory (per sesi)
@@ -19,6 +20,7 @@ interface StoredAccount {
   semester: string;
   jurusan: string;
   email: string;
+  profileImageUri?: string;
 }
 
 // Hasil register
@@ -36,6 +38,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   login: (nim: string, password: string) => LoginResult;
   logout: () => void;
+  updateProfilePhoto: (uri: string) => void;
   register: (params: {
     nim: string;
     nama: string;
@@ -197,7 +200,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       semester: account.semester,
       jurusan: account.jurusan,
       email: account.email,
+<<<<<<< Updated upstream
     };
+=======
+      profileImageUri: account.profileImageUri,
+    });
+>>>>>>> Stashed changes
 
     setUser(userData);
 
@@ -209,8 +217,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateProfilePhoto = (uri: string) => {
+    if (!user) {
+      return;
+    }
+
+    setUser({ ...user, profileImageUri: uri });
+    accountsDb.current = accountsDb.current.map((account) =>
+      account.nim === user.nim ? { ...account, profileImageUri: uri } : account
+    );
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, isLoggedIn: user !== null }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, updateProfilePhoto, register, isLoggedIn: user !== null }}
+    >
       {children}
     </AuthContext.Provider>
   );

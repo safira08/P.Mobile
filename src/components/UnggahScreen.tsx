@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -27,6 +28,13 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import AccelerometerCard from './AccelerometerCard';
 import DocumentUploadPicker from './DocumentUploadPicker';
 import { useAuth } from '../context/AuthContext';
+import {
+  pickDocumentFile,
+  pickImageFromGallery,
+  PickedMediaResult,
+  showMediaPickerError,
+  takePhotoWithCamera,
+} from '../utils/mediaPicker';
 
 // ==========================================
 // TIPE DATA & INTERFACES (DTO)
@@ -58,13 +66,15 @@ export interface UploadFilePayload {
   name: string;
   type: string;
   size?: string;
-  rawFile?: any;
+  isImage?: boolean;
+  rawFile?: Blob;
 }
 
 export interface UnggahScreenProps {
   onSuccess?: (createdNote?: any) => void;
   onClose?: () => void;
   isModal?: boolean;
+  initialCourse?: string;
 }
 
 // ==========================================
@@ -212,6 +222,7 @@ export default function UnggahScreen({
   onSuccess,
   onClose,
   isModal = false,
+  initialCourse,
 }: UnggahScreenProps) {
   const { user } = useAuth();
   const uploaderName = user?.nama ?? 'safira';
@@ -227,12 +238,15 @@ export default function UnggahScreen({
 
   // Form State
   const [judulCatatan, setJudulCatatan] = useState<string>('');
-  const [mataKuliah, setMataKuliah] = useState<string>(FALLBACK_MATA_KULIAH[0]);
+  const [mataKuliah, setMataKuliah] = useState<string>(
+    initialCourse ?? FALLBACK_MATA_KULIAH[0]
+  );
   const [semester, setSemester] = useState<string>(FALLBACK_SEMESTER[4]);
   const [tingkatKesulitan, setTingkatKesulitan] = useState<TingkatKesulitan>('Tingkat Dasar');
   const [deskripsi, setDeskripsi] = useState<string>('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
+<<<<<<< Updated upstream
   // State Berkas Upload (PDF atau foto dokumentasi)
   const [file, setFile] = useState<UploadFilePayload>({
     uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
@@ -240,6 +254,10 @@ export default function UnggahScreen({
     type: 'application/pdf',
     size: '2.4 MB',
   });
+=======
+  // State Berkas PDF
+  const [file, setFile] = useState<UploadFilePayload | null>(null);
+>>>>>>> Stashed changes
 
   // State sensor Accelerometer & shake detection
   const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
@@ -296,7 +314,11 @@ export default function UnggahScreen({
         setListSemester(parsedListSem);
 
         if (parsedListMK.length > 0) {
-          setMataKuliah((prev) => prev || parsedListMK[0]);
+          setMataKuliah(
+            initialCourse && parsedListMK.includes(initialCourse)
+              ? initialCourse
+              : parsedListMK[0]
+          );
         }
         if (parsedListSem.length > 0) {
           setSemester((prev) => prev || parsedListSem[4] || parsedListSem[0]);
@@ -307,7 +329,11 @@ export default function UnggahScreen({
         if (isCancelled) return;
         setListMataKuliah(FALLBACK_MATA_KULIAH);
         setListSemester(FALLBACK_SEMESTER);
-        setMataKuliah((prev) => prev || FALLBACK_MATA_KULIAH[0]);
+        setMataKuliah(
+          initialCourse && FALLBACK_MATA_KULIAH.includes(initialCourse)
+            ? initialCourse
+            : FALLBACK_MATA_KULIAH[0]
+        );
         setSemester((prev) => prev || FALLBACK_SEMESTER[4]);
       } finally {
         if (!isCancelled) {
@@ -321,8 +347,9 @@ export default function UnggahScreen({
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [initialCourse]);
 
+<<<<<<< Updated upstream
   useEffect(() => {
     if (Platform.OS === 'web' || !Accelerometer) {
       return;
@@ -523,88 +550,50 @@ export default function UnggahScreen({
       input.type = 'file';
       input.accept = 'application/pdf,.pdf';
       input.style.display = 'none';
+=======
+  const applyPickedMedia = (pickedMedia: PickedMediaResult | null) => {
+    if (pickedMedia) {
+      setFile(pickedMedia);
+    }
+  };
+>>>>>>> Stashed changes
 
-      input.onchange = (event: any) => {
-        const pickedFile = event.target?.files?.[0];
-        if (pickedFile) {
-          const isPdf =
-            pickedFile.type === 'application/pdf' ||
-            pickedFile.name.toLowerCase().endsWith('.pdf');
+  const handlePickCamera = async () => {
+    try {
+      applyPickedMedia(await takePhotoWithCamera());
+    } catch (error) {
+      showMediaPickerError('Gagal Membuka Kamera', error);
+    }
+  };
 
-          if (!isPdf) {
-            Alert.alert(
-              'Format Berkas Salah',
-              'Harap pilih berkas dengan format PDF (.pdf).'
-            );
-            return;
-          }
+  const handlePickGallery = async () => {
+    try {
+      applyPickedMedia(await pickImageFromGallery());
+    } catch (error) {
+      showMediaPickerError('Gagal Membuka Galeri', error);
+    }
+  };
 
-          // Format ukuran berkas (MB / KB)
-          const sizeMB = (pickedFile.size / (1024 * 1024)).toFixed(2);
-          const sizeLabel =
-            pickedFile.size >= 1024 * 1024
-              ? `${sizeMB} MB`
-              : `${Math.round(pickedFile.size / 1024)} KB`;
+  const handlePickDocument = async () => {
+    try {
+      const pickedMedia = await pickDocumentFile('application/pdf');
+      if (!pickedMedia) {
+        return;
+      }
 
-          const objectUrl = URL.createObjectURL(pickedFile);
+      const isPdf =
+        pickedMedia.type === 'application/pdf' || pickedMedia.name.toLowerCase().endsWith('.pdf');
+      if (!isPdf) {
+        showMediaPickerError(
+          'Format Berkas Salah',
+          new Error('Harap pilih berkas dengan format PDF (.pdf).')
+        );
+        return;
+      }
 
-          // Update state file PDF secara reaktif
-          setFile({
-            uri: objectUrl,
-            name: pickedFile.name,
-            type: 'application/pdf',
-            size: sizeLabel,
-            rawFile: pickedFile,
-          });
-        }
-      };
-
-      document.body.appendChild(input);
-      input.click();
-      setTimeout(() => {
-        if (document.body.contains(input)) {
-          document.body.removeChild(input);
-        }
-      }, 1000);
-    } else {
-      // Dialog Alternatif pada Mobile
-      Alert.alert(
-        'Pilih Berkas PDF',
-        'Pilih dokumen PDF yang ingin Anda lampirkan:',
-        [
-          {
-            text: 'Catatan_Kuliah_Bab1_5.pdf (3.1 MB)',
-            onPress: () =>
-              setFile({
-                uri: 'file:///simak/storage/documents/Catatan_Kuliah_Bab1_5.pdf',
-                name: 'Catatan_Kuliah_Bab1_5.pdf',
-                type: 'application/pdf',
-                size: '3.1 MB',
-              }),
-          },
-          {
-            text: 'Rangkuman_Persiapan_UAS.pdf (1.8 MB)',
-            onPress: () =>
-              setFile({
-                uri: 'file:///simak/storage/documents/Rangkuman_Persiapan_UAS.pdf',
-                name: 'Rangkuman_Persiapan_UAS.pdf',
-                type: 'application/pdf',
-                size: '1.8 MB',
-              }),
-          },
-          {
-            text: 'Catatan_Praktikum_Mobile.pdf (2.5 MB)',
-            onPress: () =>
-              setFile({
-                uri: 'file:///simak/storage/documents/Catatan_Praktikum_Mobile.pdf',
-                name: 'Catatan_Praktikum_Mobile.pdf',
-                type: 'application/pdf',
-                size: '2.5 MB',
-              }),
-          },
-          { text: 'Batal', style: 'cancel' },
-        ]
-      );
+      applyPickedMedia(pickedMedia);
+    } catch (error) {
+      showMediaPickerError('Gagal Membuka Dokumen', error);
     }
   };
 
@@ -639,7 +628,11 @@ export default function UnggahScreen({
 
     // Validasi Berkas Dokumen / Foto
     if (!file || !file.uri) {
+<<<<<<< Updated upstream
       Alert.alert('Berkas Belum Ada', 'Silakan pilih dokumen PDF atau foto dokumen terlebih dahulu.');
+=======
+      Alert.alert('Berkas Belum Ada', 'Silakan pilih foto atau dokumen catatan kuliah.');
+>>>>>>> Stashed changes
       return;
     }
 
@@ -660,7 +653,11 @@ export default function UnggahScreen({
         formData.append('file', {
           uri: file.uri,
           name: file.name,
+<<<<<<< Updated upstream
           type: mimeType,
+=======
+          type: file.type,
+>>>>>>> Stashed changes
         } as any);
       }
 
@@ -951,6 +948,7 @@ export default function UnggahScreen({
             </View>
           </View>
 
+<<<<<<< Updated upstream
           {/* 5. Berkas Dokumen / Foto (Upload via Kamera, Galeri, atau File) */}
           <DocumentUploadPicker
             file={file}
@@ -959,6 +957,57 @@ export default function UnggahScreen({
             onPickFromGallery={handlePickFromGallery}
             onPickDocument={handlePickDocument}
           />
+=======
+          {/* 5. Lampiran Catatan */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>
+              Lampiran Catatan (PDF atau Foto) <Text style={styles.requiredAsterisk}>*</Text>
+            </Text>
+            <View style={styles.mediaPickerActions}>
+              <Pressable
+                style={styles.mediaPickerButton}
+                onPress={handlePickCamera}
+                disabled={isUploading}
+              >
+                <Text style={styles.mediaPickerButtonText}>Kamera</Text>
+              </Pressable>
+              <Pressable
+                style={styles.mediaPickerButton}
+                onPress={handlePickGallery}
+                disabled={isUploading}
+              >
+                <Text style={styles.mediaPickerButtonText}>Galeri</Text>
+              </Pressable>
+              <Pressable
+                style={styles.mediaPickerButton}
+                onPress={handlePickDocument}
+                disabled={isUploading}
+              >
+                <Text style={styles.mediaPickerButtonText}>Dokumen</Text>
+              </Pressable>
+            </View>
+            <View style={styles.fileCard}>
+              {file?.isImage ? (
+                <Image source={{ uri: file.uri }} style={styles.fileThumbnail} />
+              ) : (
+                <PdfFileIcon size={32} />
+              )}
+              <View style={styles.fileDetailsCol}>
+                <Text style={styles.fileName} numberOfLines={1}>
+                  {file?.name ?? 'Belum ada lampiran'}
+                </Text>
+                <Text style={styles.fileMeta}>
+                  {file ? `${file.type} • ${file.size || 'Siap tayang'}` : 'Pilih PDF atau foto catatan'}
+                </Text>
+                {file ? (
+                  <View style={styles.fileValidatedBadge}>
+                    <Text style={styles.fileValidatedText}>✓ Berkas Siap Diunggah</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </View>
+>>>>>>> Stashed changes
 
           {/* 6. Deskripsi Ringkas */}
           <View style={styles.fieldGroup}>
@@ -1098,8 +1147,11 @@ export default function UnggahScreen({
               style={styles.successFinishBtn}
               onPress={() => {
                 setShowSuccessModal(false);
-                if (onSuccess) onSuccess(createdNoteResult);
-                if (onClose) onClose();
+                if (onSuccess) {
+                  onSuccess(createdNoteResult);
+                } else {
+                  onClose?.();
+                }
               }}
             >
               <Text style={styles.successFinishBtnText}>Selesai & Lihat di Profil</Text>
@@ -1449,6 +1501,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
   },
+  mediaPickerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  mediaPickerButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 9,
+    paddingVertical: 9,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
+  },
+  mediaPickerButtonText: {
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   fileCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1458,7 +1531,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 12,
-    ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
+  },
+  fileThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
   },
   previewImage: {
     width: 52,
@@ -1491,20 +1568,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#059669',
-  },
-  changeFileBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#FDA4AF',
-    ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
-  },
-  changeFileBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#BE123C',
   },
   actionsContainer: {
     flexDirection: 'row',

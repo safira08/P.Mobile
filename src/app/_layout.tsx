@@ -1,12 +1,18 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+<<<<<<< Updated upstream
 import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+=======
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+>>>>>>> Stashed changes
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '../context/AuthContext';
 
-SplashScreen.preventAutoHideAsync();
+try {
+  SplashScreen.preventAutoHideAsync();
+} catch { }
 
 export default function RootLayout() {
   const [isAppOffline, setIsAppOffline] = useState(false);
@@ -16,6 +22,7 @@ export default function RootLayout() {
     setIsAppOffline(!state.isConnected || state.isInternetReachable === false);
   }, []);
 
+<<<<<<< Updated upstream
   useEffect(() => {
     const updateConnectionState = (state: NetInfoState) => {
       const offline = !state.isConnected || state.isInternetReachable === false;
@@ -28,9 +35,23 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, []);
 
+=======
+>>>>>>> Stashed changes
   useEffect(() => {
-    // Sembunyikan native splash screen segera setelah aplikasi siap
-    SplashScreen.hideAsync();
+    const updateConnectionState = (state: NetInfoState) => {
+      const offline = !state.isConnected || state.isInternetReachable === false;
+      setIsAppOffline(offline);
+    };
+
+    NetInfo.fetch().then(updateConnectionState);
+    const unsubscribe = NetInfo.addEventListener(updateConnectionState);
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    try {
+      SplashScreen.hideAsync();
+    } catch { }
   }, []);
 
   return (
@@ -51,6 +72,10 @@ export default function RootLayout() {
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="dashboard" options={{ headerShown: false }} />
             <Stack.Screen name="unggah" options={{ headerShown: false }} />
+<<<<<<< Updated upstream
+=======
+            <Stack.Screen name="todo" options={{ headerShown: false }} />
+>>>>>>> Stashed changes
           </Stack>
         </View>
       </ThemeProvider>
