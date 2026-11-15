@@ -916,29 +916,12 @@ export default function DashboardScreen() {
         {/* 1. Header Profil (Sesuai Gambar) */}
         <View style={styles.profileHeroCard}>
           <View style={styles.profileHeroRow}>
-<<<<<<< Updated upstream
-            <Pressable onPress={launchProfileImagePicker}>
+            <Pressable onPress={() => setIsProfileMediaPickerVisible(true)}>
               <View style={styles.avatarContainer}>
-                <StudentVectorAvatar size={74} imageUri={profileAvatarUri} />
+                <StudentVectorAvatar size={74} imageUri={user?.profileImageUri || profileAvatarUri} />
                 <View style={styles.semesterAvatarBadge}>
                   <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
                 </View>
-=======
-            <View style={styles.avatarContainer}>
-              <Pressable
-                onPress={() => setIsProfileMediaPickerVisible(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Pilih foto profil"
-              >
-                {user?.profileImageUri ? (
-                  <Image source={{ uri: user.profileImageUri }} style={styles.profileAvatarImage} />
-                ) : (
-                  <StudentVectorAvatar size={74} />
-                )}
-              </Pressable>
-              <View style={styles.semesterAvatarBadge}>
-                <Text style={styles.semesterAvatarText}>{displaySemester.replace('Semester', 'Sem.')}</Text>
->>>>>>> Stashed changes
               </View>
             </Pressable>
             <View style={styles.profileTextCol}>
@@ -948,16 +931,8 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.profileNim}>NIM: {displayNim}</Text>
               <Text style={styles.profileMajor}>{displayJurusan} • {displaySemester}</Text>
-<<<<<<< Updated upstream
-              <Pressable style={styles.profileEditButton} onPress={launchProfileImagePicker}>
+              <Pressable style={styles.profileEditButton} onPress={() => setIsProfileMediaPickerVisible(true)}>
                 <Text style={styles.profileEditButtonText}>Ubah foto profil</Text>
-=======
-              <Pressable
-                style={styles.editProfilePhotoButton}
-                onPress={() => setIsProfileMediaPickerVisible(true)}
-              >
-                <Text style={styles.editProfilePhotoText}>Ubah foto profil</Text>
->>>>>>> Stashed changes
               </Pressable>
             </View>
           </View>

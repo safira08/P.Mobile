@@ -67,7 +67,7 @@ export interface UploadFilePayload {
   type: string;
   size?: string;
   isImage?: boolean;
-  rawFile?: Blob;
+  rawFile?: any;
 }
 
 export interface UnggahScreenProps {
@@ -246,7 +246,6 @@ export default function UnggahScreen({
   const [deskripsi, setDeskripsi] = useState<string>('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
-<<<<<<< Updated upstream
   // State Berkas Upload (PDF atau foto dokumentasi)
   const [file, setFile] = useState<UploadFilePayload>({
     uri: 'file:///simak/storage/documents/catatan_kuliah.pdf',
@@ -254,10 +253,6 @@ export default function UnggahScreen({
     type: 'application/pdf',
     size: '2.4 MB',
   });
-=======
-  // State Berkas PDF
-  const [file, setFile] = useState<UploadFilePayload | null>(null);
->>>>>>> Stashed changes
 
   // State sensor Accelerometer & shake detection
   const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
@@ -349,7 +344,6 @@ export default function UnggahScreen({
     };
   }, [initialCourse]);
 
-<<<<<<< Updated upstream
   useEffect(() => {
     if (Platform.OS === 'web' || !Accelerometer) {
       return;
@@ -550,50 +544,88 @@ export default function UnggahScreen({
       input.type = 'file';
       input.accept = 'application/pdf,.pdf';
       input.style.display = 'none';
-=======
-  const applyPickedMedia = (pickedMedia: PickedMediaResult | null) => {
-    if (pickedMedia) {
-      setFile(pickedMedia);
-    }
-  };
->>>>>>> Stashed changes
 
-  const handlePickCamera = async () => {
-    try {
-      applyPickedMedia(await takePhotoWithCamera());
-    } catch (error) {
-      showMediaPickerError('Gagal Membuka Kamera', error);
-    }
-  };
+      input.onchange = (event: any) => {
+        const pickedFile = event.target?.files?.[0];
+        if (pickedFile) {
+          const isPdf =
+            pickedFile.type === 'application/pdf' ||
+            pickedFile.name.toLowerCase().endsWith('.pdf');
 
-  const handlePickGallery = async () => {
-    try {
-      applyPickedMedia(await pickImageFromGallery());
-    } catch (error) {
-      showMediaPickerError('Gagal Membuka Galeri', error);
-    }
-  };
+          if (!isPdf) {
+            Alert.alert(
+              'Format Berkas Salah',
+              'Harap pilih berkas dengan format PDF (.pdf).'
+            );
+            return;
+          }
 
-  const handlePickDocument = async () => {
-    try {
-      const pickedMedia = await pickDocumentFile('application/pdf');
-      if (!pickedMedia) {
-        return;
-      }
+          // Format ukuran berkas (MB / KB)
+          const sizeMB = (pickedFile.size / (1024 * 1024)).toFixed(2);
+          const sizeLabel =
+            pickedFile.size >= 1024 * 1024
+              ? `${sizeMB} MB`
+              : `${Math.round(pickedFile.size / 1024)} KB`;
 
-      const isPdf =
-        pickedMedia.type === 'application/pdf' || pickedMedia.name.toLowerCase().endsWith('.pdf');
-      if (!isPdf) {
-        showMediaPickerError(
-          'Format Berkas Salah',
-          new Error('Harap pilih berkas dengan format PDF (.pdf).')
-        );
-        return;
-      }
+          const objectUrl = URL.createObjectURL(pickedFile);
 
-      applyPickedMedia(pickedMedia);
-    } catch (error) {
-      showMediaPickerError('Gagal Membuka Dokumen', error);
+          // Update state file PDF secara reaktif
+          setFile({
+            uri: objectUrl,
+            name: pickedFile.name,
+            type: 'application/pdf',
+            size: sizeLabel,
+            rawFile: pickedFile,
+          });
+        }
+      };
+
+      document.body.appendChild(input);
+      input.click();
+      setTimeout(() => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      }, 1000);
+    } else {
+      // Dialog Alternatif pada Mobile
+      Alert.alert(
+        'Pilih Berkas PDF',
+        'Pilih dokumen PDF yang ingin Anda lampirkan:',
+        [
+          {
+            text: 'Catatan_Kuliah_Bab1_5.pdf (3.1 MB)',
+            onPress: () =>
+              setFile({
+                uri: 'file:///simak/storage/documents/Catatan_Kuliah_Bab1_5.pdf',
+                name: 'Catatan_Kuliah_Bab1_5.pdf',
+                type: 'application/pdf',
+                size: '3.1 MB',
+              }),
+          },
+          {
+            text: 'Rangkuman_Persiapan_UAS.pdf (1.8 MB)',
+            onPress: () =>
+              setFile({
+                uri: 'file:///simak/storage/documents/Rangkuman_Persiapan_UAS.pdf',
+                name: 'Rangkuman_Persiapan_UAS.pdf',
+                type: 'application/pdf',
+                size: '1.8 MB',
+              }),
+          },
+          {
+            text: 'Catatan_Praktikum_Mobile.pdf (2.5 MB)',
+            onPress: () =>
+              setFile({
+                uri: 'file:///simak/storage/documents/Catatan_Praktikum_Mobile.pdf',
+                name: 'Catatan_Praktikum_Mobile.pdf',
+                type: 'application/pdf',
+                size: '2.5 MB',
+              }),
+          },
+          { text: 'Batal', style: 'cancel' },
+        ]
+      );
     }
   };
 
@@ -628,11 +660,7 @@ export default function UnggahScreen({
 
     // Validasi Berkas Dokumen / Foto
     if (!file || !file.uri) {
-<<<<<<< Updated upstream
       Alert.alert('Berkas Belum Ada', 'Silakan pilih dokumen PDF atau foto dokumen terlebih dahulu.');
-=======
-      Alert.alert('Berkas Belum Ada', 'Silakan pilih foto atau dokumen catatan kuliah.');
->>>>>>> Stashed changes
       return;
     }
 
@@ -653,11 +681,7 @@ export default function UnggahScreen({
         formData.append('file', {
           uri: file.uri,
           name: file.name,
-<<<<<<< Updated upstream
           type: mimeType,
-=======
-          type: file.type,
->>>>>>> Stashed changes
         } as any);
       }
 
@@ -948,7 +972,6 @@ export default function UnggahScreen({
             </View>
           </View>
 
-<<<<<<< Updated upstream
           {/* 5. Berkas Dokumen / Foto (Upload via Kamera, Galeri, atau File) */}
           <DocumentUploadPicker
             file={file}
@@ -957,57 +980,6 @@ export default function UnggahScreen({
             onPickFromGallery={handlePickFromGallery}
             onPickDocument={handlePickDocument}
           />
-=======
-          {/* 5. Lampiran Catatan */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Lampiran Catatan (PDF atau Foto) <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <View style={styles.mediaPickerActions}>
-              <Pressable
-                style={styles.mediaPickerButton}
-                onPress={handlePickCamera}
-                disabled={isUploading}
-              >
-                <Text style={styles.mediaPickerButtonText}>Kamera</Text>
-              </Pressable>
-              <Pressable
-                style={styles.mediaPickerButton}
-                onPress={handlePickGallery}
-                disabled={isUploading}
-              >
-                <Text style={styles.mediaPickerButtonText}>Galeri</Text>
-              </Pressable>
-              <Pressable
-                style={styles.mediaPickerButton}
-                onPress={handlePickDocument}
-                disabled={isUploading}
-              >
-                <Text style={styles.mediaPickerButtonText}>Dokumen</Text>
-              </Pressable>
-            </View>
-            <View style={styles.fileCard}>
-              {file?.isImage ? (
-                <Image source={{ uri: file.uri }} style={styles.fileThumbnail} />
-              ) : (
-                <PdfFileIcon size={32} />
-              )}
-              <View style={styles.fileDetailsCol}>
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {file?.name ?? 'Belum ada lampiran'}
-                </Text>
-                <Text style={styles.fileMeta}>
-                  {file ? `${file.type} • ${file.size || 'Siap tayang'}` : 'Pilih PDF atau foto catatan'}
-                </Text>
-                {file ? (
-                  <View style={styles.fileValidatedBadge}>
-                    <Text style={styles.fileValidatedText}>✓ Berkas Siap Diunggah</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </View>
->>>>>>> Stashed changes
 
           {/* 6. Deskripsi Ringkas */}
           <View style={styles.fieldGroup}>

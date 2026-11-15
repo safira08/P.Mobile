@@ -200,12 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       semester: account.semester,
       jurusan: account.jurusan,
       email: account.email,
-<<<<<<< Updated upstream
-    };
-=======
       profileImageUri: account.profileImageUri,
-    });
->>>>>>> Stashed changes
+    };
 
     setUser(userData);
 
