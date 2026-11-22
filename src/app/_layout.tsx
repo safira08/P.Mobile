@@ -40,18 +40,11 @@ export default function RootLayout() {
       <ThemeProvider value={DefaultTheme}>
         <StatusBar style="dark" />
         <View style={styles.appShell}>
-          {isAppOffline ? (
-            <View style={styles.globalOfflineBanner}>
-              <Text style={styles.globalOfflineText}>Offline: Nyalakan koneksi internet terlebih dahulu.</Text>
-              <Pressable style={styles.retryButton} onPress={refreshConnectionState}>
-                <Text style={styles.retryButtonText}>Coba Lagi</Text>
-              </Pressable>
-            </View>
-          ) : null}
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="lokasi" options={{ headerShown: false }} />
             <Stack.Screen name="unggah" options={{ headerShown: false }} />
             <Stack.Screen name="todo" options={{ headerShown: false }} />
           </Stack>

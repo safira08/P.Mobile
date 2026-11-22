@@ -31,6 +31,7 @@ import {
   showMediaPickerError,
   takePhotoWithCamera,
 } from '../utils/mediaPicker';
+import { getGeofenceNotification } from '../utils/lbsService';
 
 // ==========================================
 // TIPE DATA & TINGKAT KESULITAN MATERI
@@ -732,7 +733,9 @@ export default function DashboardScreen() {
       setIsOffline(offline);
 
       if (offline) {
-        setBerandaError('Tidak ada koneksi internet. Nyalakan koneksi internet terlebih dahulu.');
+        // Mode offline: tetap tampilkan data materi tanpa memblokir layar aplikasi
+        setNotes((prev) => (prev.length > 0 ? prev : INITIAL_NOTES));
+        setBerandaError(null);
         return;
       }
 
@@ -789,7 +792,9 @@ export default function DashboardScreen() {
 
       if (isNetworkError) {
         setIsOffline(true);
-        setBerandaError('Tidak ada koneksi internet. Nyalakan koneksi internet terlebih dahulu.');
+        // Jangan blokir layar dengan error saat offline, tampilkan data yang ada
+        setNotes((prev) => (prev.length > 0 ? prev : INITIAL_NOTES));
+        setBerandaError(null);
       } else {
         setBerandaError(rawMessage || 'Terjadi kesalahan saat memuat data.');
       }
@@ -1174,6 +1179,49 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        {/* ========================================================================= */}
+        {/* PENERAPAN WEEK 9 - LBS & GEOFENCING: KARTU SPOT MATERI GEDUNG INFORMATIKA */}
+        {/* ========================================================================= */}
+        {/* FITUR YANG DITERAPKAN:
+            1. Mengakses GPS & Izin Lokasi
+            2. Membaca Koordinat Latitude/Longitude Real-time
+            3. Menampilkan Peta Interaktif Kampus
+            4. Menampilkan Marker (Pin Lokasi & 5 Titik Spot Materi Akademik)
+            5. Reverse Geocoding (Koordinat -> Alamat Jalan Kampus)
+            6. Geofencing (Radius 150m Gedung Informatika & Pemicu Notifikasi Lonceng)
+            7. Optimasi Baterai (Mode Hemat Daya vs Akurasi Tinggi)
+        */}
+        <Pressable
+          style={styles.lbsCampusCard}
+          onPress={() => router.push('/lokasi')}
+          accessibilityRole="button"
+          accessibilityLabel="Buka Peta Kampus Week 9"
+        >
+          <View style={styles.lbsCampusHeader}>
+            <View style={styles.lbsCampusIconWrap}>
+              <Text style={{ fontSize: 22 }}>📍</Text>
+            </View>
+            <View style={styles.lbsCampusTextWrap}>
+              <View style={styles.lbsTagRow}>
+                <Text style={styles.lbsTagText}>PENERAPAN WEEK 9 • LBS & GEOFENCING</Text>
+                <View style={styles.lbsLiveDot} />
+              </View>
+              <Text style={styles.lbsCampusTitle}>Peta Kampus & Spot Materi</Text>
+              <Text style={styles.lbsCampusSub}>
+                Gedung Informatika (Radius 150m) • Rekomendasi otomatis dari titik terdekat
+              </Text>
+            </View>
+          </View>
+          <View style={styles.lbsCampusFooter}>
+            <Text style={styles.lbsSpotInfoText}>
+              🏫 5 Spot: Lab Pemrograman, Jaringan, Kelas, Perpus, Kantin
+            </Text>
+            <View style={styles.lbsOpenBtn}>
+              <Text style={styles.lbsOpenBtnText}>Buka Peta →</Text>
+            </View>
+          </View>
+        </Pressable>
+
         {/* Kotak Pencarian */}
         <View style={styles.searchBox}>
           <TextInput
@@ -1296,38 +1344,6 @@ export default function DashboardScreen() {
   // RENDER KONTEN TAB: CARI / MK
   // =========================================================================
   const renderCariMKTab = () => {
-    if (berandaError) {
-      const offlineState =
-        isOffline ||
-        berandaError.toLowerCase().includes('koneksi internet') ||
-        berandaError.toLowerCase().includes('network request failed') ||
-        berandaError.toLowerCase().includes('failed to fetch');
-      return (
-        <View style={styles.stateCenterContainer}>
-          <View style={[styles.errorIconBadge, offlineState ? styles.offlineBadgeBg : styles.errorBadgeBg]}>
-            {offlineState ? (
-              <OfflineWifiVectorIcon size={46} color="#DC2626" />
-            ) : (
-              <AlertTriangleVectorIcon size={46} color="#DC2626" />
-            )}
-          </View>
-          <Text style={styles.errorStateTitle}>
-            {offlineState ? 'Error & Offline State' : 'Error State'}
-          </Text>
-          <Text style={styles.errorStateMessage}>{berandaError}</Text>
-          <Pressable
-            style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
-            onPress={fetchBerandaNotes}
-            accessibilityRole="button"
-            accessibilityLabel="Coba Lagi"
-          >
-            <RetryVectorIcon size={18} color="#FFFFFF" />
-            <Text style={styles.retryButtonText}>Coba Lagi</Text>
-          </Pressable>
-        </View>
-      );
-    }
-
     const coursesList = [
 
       { code: 'CS-201', name: 'Struktur Data & Algoritma', count: 14, minPrice: 25000, level: 'Sulit' },
@@ -1465,14 +1481,29 @@ export default function DashboardScreen() {
 
             {/* Sisi Kanan: Bell Notif & Avatar Stylized Mahasiswa (Bukan foto orang) */}
             <View style={styles.headerRightRow}>
+              {/* PENERAPAN WEEK 9: Tombol Cepat Peta Kampus & LBS */}
+              <Pressable
+                style={styles.mapQuickBtn}
+                onPress={() => router.push('/lokasi')}
+                accessibilityRole="button"
+                accessibilityLabel="Peta Kampus LBS"
+              >
+                <Text style={{ fontSize: 16 }}>🗺️</Text>
+              </Pressable>
+
               <Pressable
                 style={styles.bellBtn}
-                onPress={() =>
+                onPress={async () => {
+                  const geofenceNotif = await getGeofenceNotification();
+                  const geofenceMsg = geofenceNotif
+                    ? `\n\n📍 ${geofenceNotif.title} (${geofenceNotif.timestamp}):\n"${geofenceNotif.message}"`
+                    : '\n\n📍 Gedung Informatika:\nBuka menu Peta Kampus untuk mendeteksi spot materi terdekat.';
+
                   Alert.alert(
                     'Notifikasi SIMAK',
-                    '• Catatan CS-201 Anda telah diunduh oleh 1.2k mahasiswa.\n• Royalti SIMAK Pay bertambah Rp35.000.\n• Anda meraih lencana Top Kontributor Gold!'
-                  )
-                }
+                    `• Catatan CS-201 Anda telah diunduh oleh 1.2k mahasiswa.\n• Royalti SIMAK Pay bertambah Rp35.000.\n• Anda meraih lencana Top Kontributor Gold!${geofenceMsg}`
+                  );
+                }}
               >
                 <BellIcon size={22} color="#0F2850" />
                 <View style={styles.bellOrangeDot} />
@@ -2304,6 +2335,104 @@ const styles = StyleSheet.create({
   },
 
   // Beranda Wallet Card
+  /* ========================================================================= */
+  /* PENERAPAN WEEK 9 - LBS & GEOFENCING STYLES                                */
+  /* ========================================================================= */
+  mapQuickBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  lbsCampusCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  lbsCampusHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  lbsCampusIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  lbsCampusTextWrap: {
+    flex: 1,
+  },
+  lbsTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lbsTagText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#2563EB',
+    letterSpacing: 0.4,
+  },
+  lbsLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  lbsCampusTitle: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  lbsCampusSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  lbsCampusFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  lbsSpotInfoText: {
+    fontSize: 10.5,
+    color: '#475569',
+    fontWeight: '600',
+    flex: 1,
+  },
+  lbsOpenBtn: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  lbsOpenBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   walletCard: {
     backgroundColor: '#0F2850',
     borderRadius: 18,

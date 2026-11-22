@@ -34,6 +34,12 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Izinkan SIMAK mengakses lokasi untuk rekomendasi materi belajar di Gedung Informatika."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

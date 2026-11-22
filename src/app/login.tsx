@@ -225,11 +225,6 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setLoginError(null);
 
-    if (isOffline) {
-      setLoginError('Anda sedang offline. Nyalakan koneksi internet terlebih dahulu untuk masuk.');
-      return;
-    }
-
     if (!loginNim.trim() || !loginPassword.trim()) {
       setLoginError('Nomor Mahasiswa dan kata sandi wajib diisi');
       return;
@@ -264,11 +259,6 @@ export default function LoginPage() {
   // ─── Logika Register ──────────────────────────────────────────────
   const handleRegister = () => {
     const errors: { nim?: string; email?: string; general?: string } = {};
-
-    if (isOffline) {
-      setRegErrors({ general: 'Anda sedang offline. Nyalakan koneksi internet terlebih dahulu untuk mendaftar.' });
-      return;
-    }
 
     // Validasi field wajib
     if (!regNama.trim() || !regNim.trim() || !regEmail.trim() || !regPassword.trim()) {
@@ -379,13 +369,6 @@ export default function LoginPage() {
 
             {/* Form Card */}
             <View style={styles.formCard}>
-              {isOffline ? (
-                <View style={styles.offlineBanner}>
-                  <WarningIcon size={17} color="#B45309" />
-                  <Text style={styles.offlineBannerText}>Offline: Nyalakan koneksi internet terlebih dahulu untuk masuk.</Text>
-                </View>
-              ) : null}
-
               {activeTab === 'login' ? (
                 // ─── FORM LOGIN ────────────────────────────────────
                 <>
