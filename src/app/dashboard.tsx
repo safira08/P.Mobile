@@ -1043,8 +1043,7 @@ export default function DashboardScreen() {
 
         {/* ========================================================================= */}
         {/* ALUR AUTENTIKASI & LBS (WEEK 9) - TAMPILAN KHUSUS TAB PROFIL:             */}
-        {/* Menampilkan titik koordinat GPS dan nama lokasi/alamat pengguna di layar  */}
-        {/* yang diambil otomatis setelah login saat pengguna mengklik 'Izinkan'.     */}
+        {/* Menampilkan titik koordinat GPS dan nama lokasi/alamat device pengguna    */}
         {/* ========================================================================= */}
         <View style={styles.profileLocationCard}>
           <View style={styles.profileLocationHeader}>
@@ -1053,7 +1052,7 @@ export default function DashboardScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={styles.profileLocationTag}>LOKASI PERANGKAT ANDA (GPS REAL-TIME)</Text>
+                <Text style={styles.profileLocationTag}>POSISI SAYA SEKARANG (DEVICE GPS)</Text>
                 {isLoadingLocation ? (
                   <ActivityIndicator size="small" color="#0284C7" />
                 ) : (
@@ -1075,20 +1074,12 @@ export default function DashboardScreen() {
           {deviceLocation && (
             <View style={styles.profileLocationDetailsRow}>
               <View style={styles.profileLocationDetailBox}>
-                <Text style={styles.profileLocationDetailLabel}>Latitude</Text>
+                <Text style={styles.profileLocationDetailLabel}>Latitude Device</Text>
                 <Text style={styles.profileLocationDetailValue}>{deviceLocation.latitude.toFixed(6)}</Text>
               </View>
               <View style={styles.profileLocationDetailBox}>
-                <Text style={styles.profileLocationDetailLabel}>Longitude</Text>
+                <Text style={styles.profileLocationDetailLabel}>Longitude Device</Text>
                 <Text style={styles.profileLocationDetailValue}>{deviceLocation.longitude.toFixed(6)}</Text>
-              </View>
-              <View style={styles.profileLocationDetailBox}>
-                <Text style={styles.profileLocationDetailLabel}>Jarak ke Kampus</Text>
-                <Text style={styles.profileLocationDetailValue}>
-                  {deviceDistanceToUmm !== null
-                    ? (deviceDistanceToUmm >= 1000 ? `${(deviceDistanceToUmm / 1000).toFixed(1)} km` : `${deviceDistanceToUmm} m`)
-                    : '-'}
-                </Text>
               </View>
             </View>
           )}
@@ -1097,9 +1088,9 @@ export default function DashboardScreen() {
             style={styles.profileOpenMapButton}
             onPress={() => router.push('/lokasi')}
             accessibilityRole="button"
-            accessibilityLabel="Buka Peta Kampus Lengkap"
+            accessibilityLabel="Buka Peta Lokasi"
           >
-            <Text style={styles.profileOpenMapButtonText}>🗺️ Buka Peta Kampus & LBS Lengkap ↗</Text>
+            <Text style={styles.profileOpenMapButtonText}>🗺️ Buka Peta Lokasi ↗</Text>
           </Pressable>
         </View>
 
@@ -1338,51 +1329,6 @@ export default function DashboardScreen() {
             <Text style={styles.topUpBtnText}>+ Isi Saldo</Text>
           </Pressable>
         </View>
-
-        {/* ========================================================================= */}
-        {/* PENERAPAN WEEK 9 - LBS & GEOFENCING: KARTU SPOT MATERI GEDUNG INFORMATIKA */}
-        {/* ========================================================================= */}
-        {/* FITUR YANG DITERAPKAN:
-            1. Mengakses GPS & Izin Lokasi
-            2. Membaca Koordinat Latitude/Longitude Real-time
-            3. Menampilkan Peta Interaktif Kampus
-            4. Menampilkan Marker (Pin Lokasi & 5 Titik Spot Materi Akademik)
-            5. Reverse Geocoding (Koordinat -> Alamat Jalan Kampus)
-            6. Geofencing (Radius 150m Gedung Informatika & Pemicu Notifikasi Lonceng)
-            7. Optimasi Baterai (Mode Hemat Daya vs Akurasi Tinggi)
-        */}
-        <Pressable
-          style={styles.lbsCampusCard}
-          onPress={() => router.push('/lokasi')}
-          accessibilityRole="button"
-          accessibilityLabel="Buka Peta Kampus Week 9"
-        >
-          <View style={styles.lbsCampusHeader}>
-            <View style={styles.lbsCampusIconWrap}>
-              <Text style={{ fontSize: 22 }}>📍</Text>
-            </View>
-            <View style={styles.lbsCampusTextWrap}>
-              <View style={styles.lbsTagRow}>
-                <Text style={styles.lbsTagText}>PENERAPAN WEEK 9 • LBS & GEOFENCING</Text>
-                <View style={styles.lbsLiveDot} />
-              </View>
-              <Text style={styles.lbsCampusTitle}>Peta Kampus & Spot Materi</Text>
-              <Text style={styles.lbsCampusSub}>
-                {deviceAddress
-                  ? `Posisi Anda: ${deviceAddress} • ${deviceDistanceToUmm !== null ? (deviceDistanceToUmm >= 1000 ? (deviceDistanceToUmm / 1000).toFixed(1) + ' km' : deviceDistanceToUmm + ' m') + ' dari Kampus UMM' : 'Terdeteksi'}`
-                  : 'Gedung Informatika (Radius 150m) • Rekomendasi otomatis dari titik terdekat'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.lbsCampusFooter}>
-            <Text style={styles.lbsSpotInfoText}>
-              🏫 5 Spot: Lab Pemrograman, Jaringan, Kelas, Perpus, Kantin
-            </Text>
-            <View style={styles.lbsOpenBtn}>
-              <Text style={styles.lbsOpenBtnText}>Buka Peta →</Text>
-            </View>
-          </View>
-        </Pressable>
 
         {/* Kotak Pencarian */}
         <View style={styles.searchBox}>
