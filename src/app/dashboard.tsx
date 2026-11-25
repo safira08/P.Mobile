@@ -31,7 +31,15 @@ import {
   showMediaPickerError,
   takePhotoWithCamera,
 } from '../utils/mediaPicker';
-import { getGeofenceNotification } from '../utils/lbsService';
+import * as Location from 'expo-location';
+import {
+  calculateHaversineDistance,
+  GEOFENCE_INFORMATIKA,
+  getGeofenceNotification,
+  getSavedDeviceLocation,
+  performReverseGeocode,
+  saveDeviceLocation,
+} from '../utils/lbsService';
 
 // ==========================================
 // TIPE DATA & TINGKAT KESULITAN MATERI
@@ -544,6 +552,96 @@ export default function DashboardScreen() {
       }
     };
     loadStoredUserData();
+  }, []);
+
+  // =========================================================================
+  // ALUR (FLOW) AUTENTIKASI & LBS (WEEK 9):
+  // Tepat setelah pengguna berhasil login dan masuk ke halaman utama (dashboard),
+  // sistem langsung memicu Location Permission Prompt (dialog izin akses lokasi)
+  // secara otomatis. Jika pengguna mengklik 'Izinkan' (Allow), sistem langsung
+  // mengambil titik koordinat GPS dan menampilkan nama lokasi atau alamat tempat
+  // pengguna berada saat ini di layar.
+  // =========================================================================
+  const [deviceLocation, setDeviceLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  } | null>(null);
+  const [deviceAddress, setDeviceAddress] = useState<string | null>(null);
+  const [deviceDistanceToUmm, setDeviceDistanceToUmm] = useState<number | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const triggerLocationPromptAndGetCoords = async () => {
+      try {
+        setIsLoadingLocation(true);
+
+        // 1. Muat cache lokasi terakhir jika tersedia
+        const cached = await getSavedDeviceLocation();
+        if (cached && isMounted) {
+          setDeviceLocation({
+            latitude: cached.latitude,
+            longitude: cached.longitude,
+            accuracy: cached.accuracy,
+          });
+          const dist = calculateHaversineDistance(
+            cached.latitude,
+            cached.longitude,
+            GEOFENCE_INFORMATIKA.latitude,
+            GEOFENCE_INFORMATIKA.longitude
+          );
+          setDeviceDistanceToUmm(dist);
+        }
+
+        // 2. Tepat setelah login dan masuk dashboard, sistem langsung memicu dialog izin akses lokasi (Location Permission Prompt)
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status === 'granted') {
+          if (isMounted) setLocationPermissionGranted(true);
+
+          // 3. Jika pengguna mengklik 'Izinkan' (Allow), sistem langsung mengambil titik koordinat GPS secara real-time
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+
+          const { latitude, longitude, accuracy } = position.coords;
+          if (isMounted) {
+            setDeviceLocation({ latitude, longitude, accuracy });
+            const dist = calculateHaversineDistance(
+              latitude,
+              longitude,
+              GEOFENCE_INFORMATIKA.latitude,
+              GEOFENCE_INFORMATIKA.longitude
+            );
+            setDeviceDistanceToUmm(dist);
+          }
+
+          // Simpan koordinat terbaru ke penyimpanan lokal
+          await saveDeviceLocation(latitude, longitude, accuracy);
+
+          // 4. Menerjemahkan koordinat menjadi nama lokasi / alamat tempat pengguna berada saat ini dan tampilkan di layar
+          const address = await performReverseGeocode(latitude, longitude);
+          if (isMounted) {
+            setDeviceAddress(address);
+          }
+        } else {
+          if (isMounted) setLocationPermissionGranted(false);
+        }
+      } catch (err) {
+        console.warn('Gagal memicu permission prompt atau membaca lokasi:', err);
+      } finally {
+        if (isMounted) setIsLoadingLocation(false);
+      }
+    };
+
+    triggerLocationPromptAndGetCoords();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   /// Fungsi Logout: hapus token & session, lalu redirect ke login
@@ -1146,6 +1244,57 @@ export default function DashboardScreen() {
 
     return (
       <View style={styles.tabContentContainer}>
+        {/* ========================================================================= */}
+        {/* ALUR AUTENTIKASI & LBS (WEEK 9):                                          */}
+        {/* Tepat setelah login dan masuk dashboard, sistem memicu dialog izin        */}
+        {/* akses lokasi (Permission Prompt). Jika diizinkan (Allow), sistem langsung  */}
+        {/* mengambil titik koordinat GPS dan menampilkan nama lokasi/alamat di layar. */}
+        {/* ========================================================================= */}
+        <View style={styles.liveLocationBanner}>
+          <View style={styles.liveLocationIconWrap}>
+            <Text style={{ fontSize: 20 }}>📍</Text>
+          </View>
+          <View style={styles.liveLocationInfoWrap}>
+            <View style={styles.liveLocationTagRow}>
+              <Text style={styles.liveLocationTagText}>LOKASI PERANGKAT ANDA (REAL-TIME)</Text>
+              {isLoadingLocation ? (
+                <ActivityIndicator size="small" color="#0284C7" style={{ marginLeft: 6 }} />
+              ) : (
+                <View style={styles.lbsLiveDot} />
+              )}
+            </View>
+            <Text style={styles.liveLocationAddressText} numberOfLines={2}>
+              {deviceAddress
+                ? deviceAddress
+                : isLoadingLocation
+                ? 'Meminta izin GPS & mendeteksi posisi perangkat...'
+                : locationPermissionGranted === false
+                ? 'Izin akses lokasi belum diizinkan (Allow)'
+                : 'Mendeteksi titik koordinat perangkat...'}
+            </Text>
+            {deviceLocation && (
+              <Text style={styles.liveLocationCoordText}>
+                {deviceLocation.latitude.toFixed(6)}, {deviceLocation.longitude.toFixed(6)}
+                {deviceDistanceToUmm !== null && (
+                  <Text style={styles.liveLocationDistanceHighlight}>
+                    {' '}• {deviceDistanceToUmm >= 1000
+                      ? `${(deviceDistanceToUmm / 1000).toFixed(1)} km dari UMM`
+                      : `${deviceDistanceToUmm} m dari UMM`}
+                  </Text>
+                )}
+              </Text>
+            )}
+          </View>
+          <Pressable
+            style={styles.liveLocationMapBtn}
+            onPress={() => router.push('/lokasi')}
+            accessibilityRole="button"
+            accessibilityLabel="Buka Peta Kampus"
+          >
+            <Text style={styles.liveLocationMapBtnText}>Peta ↗</Text>
+          </Pressable>
+        </View>
+
         {/* Wallet / Saldo Card Mahasiswa SIMAK */}
         <View style={styles.walletCard}>
           <View style={styles.walletLeftCol}>
@@ -1208,7 +1357,9 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.lbsCampusTitle}>Peta Kampus & Spot Materi</Text>
               <Text style={styles.lbsCampusSub}>
-                Gedung Informatika (Radius 150m) • Rekomendasi otomatis dari titik terdekat
+                {deviceAddress
+                  ? `Posisi Anda: ${deviceAddress} • ${deviceDistanceToUmm !== null ? (deviceDistanceToUmm >= 1000 ? (deviceDistanceToUmm / 1000).toFixed(1) + ' km' : deviceDistanceToUmm + ' m') + ' dari Kampus UMM' : 'Terdeteksi'}`
+                  : 'Gedung Informatika (Radius 150m) • Rekomendasi otomatis dari titik terdekat'}
               </Text>
             </View>
           </View>
@@ -2338,6 +2489,72 @@ const styles = StyleSheet.create({
   /* ========================================================================= */
   /* PENERAPAN WEEK 9 - LBS & GEOFENCING STYLES                                */
   /* ========================================================================= */
+  liveLocationBanner: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1.2,
+    borderColor: '#BAE6FD',
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  liveLocationIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  liveLocationInfoWrap: {
+    flex: 1,
+  },
+  liveLocationTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveLocationTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0369A1',
+    letterSpacing: 0.4,
+  },
+  liveLocationAddressText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  liveLocationCoordText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  liveLocationDistanceHighlight: {
+    color: '#059669',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  liveLocationMapBtn: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  liveLocationMapBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   mapQuickBtn: {
     width: 36,
     height: 36,

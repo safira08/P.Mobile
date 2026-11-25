@@ -252,7 +252,9 @@ export default function LoginPage() {
         await AsyncStorage.setItem('user_nama', result.user.nama);
       }
 
-      // 3. Week 9 LBS: Baca dan simpan posisi GPS nyata dari device pengguna saat login
+      // 3. Week 9 LBS & Alur Autentikasi:
+      // Tepat setelah pengguna berhasil login dan masuk ke dashboard, sistem memicu
+      // Location Permission Prompt secara otomatis untuk membaca GPS dan menampilkan alamat di layar.
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
