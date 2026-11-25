@@ -177,7 +177,7 @@ export function calculateHaversineDistance(
 
 // -------------------------------------------------------------------------
 // PENERAPAN WEEK 9 - FITUR 5: REVERSE GEOCODING RESMI
-// Menerjemahkan koordinat latitude/longitude menjadi nama jalan, kecamatan, dan kota
+// Menerjemahkan koordinat latitude/longitude menjadi nama jalan, kecamatan, dan kota device
 // -------------------------------------------------------------------------
 export async function performReverseGeocode(
   latitude: number,
@@ -197,9 +197,43 @@ export async function performReverseGeocode(
       }
     }
   } catch (err) {
-    console.warn('Gagal reverse geocode, menggunakan fallback:', err);
+    console.warn('Gagal reverse geocode, menggunakan koordinat:', err);
   }
-  return GEOFENCE_INFORMATIKA.addressDefault;
+  return `Koordinat Device: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+// -------------------------------------------------------------------------
+// MANAJEMEN PENYIMPANAN LOKASI DEVICE PENGGUNA SAAT LOGIN
+// -------------------------------------------------------------------------
+export const USER_DEVICE_LOCATION_KEY = 'simak_user_device_location_v1';
+
+export async function saveDeviceLocation(
+  latitude: number,
+  longitude: number,
+  accuracy?: number | null
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      USER_DEVICE_LOCATION_KEY,
+      JSON.stringify({ latitude, longitude, accuracy, timestamp: Date.now() })
+    );
+  } catch (e) {
+    console.warn('Gagal menyimpan lokasi device:', e);
+  }
+}
+
+export async function getSavedDeviceLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  timestamp?: number;
+} | null> {
+  try {
+    const raw = await AsyncStorage.getItem(USER_DEVICE_LOCATION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
 // -------------------------------------------------------------------------

@@ -25,7 +25,6 @@ const Accelerometer =
     ? null
     : (require('expo-sensors') as typeof import('expo-sensors')).Accelerometer;
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import AccelerometerCard from './AccelerometerCard';
 import DocumentUploadPicker from './DocumentUploadPicker';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -841,14 +840,6 @@ export default function UnggahScreen({
             <Text style={styles.initialLoadingTitle}>Mengambil data mata kuliah & semester...</Text>
           </View>
         )}
-
-        <AccelerometerCard
-          x={accelerometerData.x}
-          y={accelerometerData.y}
-          z={accelerometerData.z}
-          shakeDetected={shakeDetected}
-          shakeCount={shakeCount}
-        />
 
         <View style={styles.formContainer}>
           {/* 1. Judul Catatan */}

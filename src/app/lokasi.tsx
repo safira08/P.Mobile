@@ -42,9 +42,11 @@ import {
   CAMPUS_MATERIAL_SPOTS,
   evaluateGeofenceAndSpots,
   GEOFENCE_INFORMATIKA,
+  getSavedDeviceLocation,
   MaterialSpot,
   performReverseGeocode,
   requestGpsPermission,
+  saveDeviceLocation,
   triggerGeofenceNotification,
 } from '../utils/lbsService';
 
@@ -107,9 +109,27 @@ export default function LokasiScreen() {
 
   // -----------------------------------------------------------------------
   // PENERAPAN WEEK 9 - FITUR 1: MENGAKSES GPS (PERMISSION CHECK & REQUEST)
+  // Menyesuaikan posisi nyata device pengguna saat login / membuka layar
   // -----------------------------------------------------------------------
   const initGpsLocation = useCallback(async () => {
     setIsLoadingGps(true);
+
+    // 1. Coba baca koordinat device yang tersimpan saat login
+    try {
+      const saved = await getSavedDeviceLocation();
+      if (saved && saved.latitude && saved.longitude) {
+        setUserCoords({
+          latitude: saved.latitude,
+          longitude: saved.longitude,
+          accuracy: saved.accuracy,
+        });
+        updateLocationState(saved.latitude, saved.longitude);
+      }
+    } catch (e) {
+      console.warn('Gagal membaca cache lokasi device:', e);
+    }
+
+    // 2. Minta izin akses lokasi foreground GPS
     const granted = await requestGpsPermission();
     setHasPermission(granted);
 
@@ -117,14 +137,14 @@ export default function LokasiScreen() {
       setIsLoadingGps(false);
       Alert.alert(
         'Izin Lokasi Diperlukan',
-        'SIMAK memerlukan izin GPS untuk mendeteksi spot materi di Gedung Informatika dan menghitung jarak geofence.',
+        'SIMAK memerlukan izin GPS untuk mendeteksi posisi nyata device Anda dan menghitung jarak ke kampus UMM.',
         [{ text: 'Mengerti' }]
       );
       return;
     }
 
     try {
-      // PENERAPAN WEEK 9 - FITUR 2: MEMBACA KOORDINAT DARI SENSOR GPS
+      // 3. PENERAPAN WEEK 9 - FITUR 2: MEMBACA KOORDINAT DARI SENSOR GPS DEVICE
       const config = BATTERY_PRESETS[batteryMode];
       const position = await Location.getCurrentPositionAsync({
         accuracy: config.accuracy,
@@ -135,15 +155,32 @@ export default function LokasiScreen() {
       setIsSimulated(false);
       setSimulationName('');
 
+      // Simpan koordinat device pengguna
+      await saveDeviceLocation(latitude, longitude, accuracy);
+
       // Evaluasi Geofence & 5 Titik Materi
       updateLocationState(latitude, longitude);
     } catch (error) {
-      console.warn('Gagal membaca GPS real, menggunakan koordinat default kampus:', error);
-      updateLocationState(GEOFENCE_INFORMATIKA.latitude, GEOFENCE_INFORMATIKA.longitude);
+      console.warn('Gagal membaca sensor GPS langsung, menggunakan koordinat terakhir:', error);
     } finally {
       setIsLoadingGps(false);
     }
   }, [batteryMode]);
+
+  // Fungsi utilitas menggeser peta ke koordinat tertentu
+  const panToCoordinates = (lat: number, lng: number, delta = 0.0035) => {
+    if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+      mapRef.current.animateToRegion(
+        {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: delta,
+          longitudeDelta: delta,
+        },
+        600
+      );
+    }
+  };
 
   // -----------------------------------------------------------------------
   // PROSES EVALUASI GEOFENCE, JARAK HAVERSINE, & REVERSE GEOCODING
@@ -507,6 +544,35 @@ export default function LokasiScreen() {
         {/* CONTAINER PETA RESMI KAMPUS 3 UMM */}
         {renderInteractiveMap()}
 
+        {/* NAVIGASI CEPAT: DEVICE SAYA VS KAMPUS UMM */}
+        <View style={styles.quickNavRow}>
+          <Pressable
+            style={[styles.quickNavBtn, !isSimulated && styles.quickNavBtnActive]}
+            onPress={() => {
+              initGpsLocation();
+              panToCoordinates(userCoords.latitude, userCoords.longitude);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Pusatkan ke Posisi Device Saya"
+          >
+            <Text style={[styles.quickNavBtnText, !isSimulated && styles.quickNavBtnTextActive]}>
+              🎯 Posisi Device Saya
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.quickNavBtn}
+            onPress={() => {
+              panToCoordinates(GEOFENCE_INFORMATIKA.latitude, GEOFENCE_INFORMATIKA.longitude);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Pusatkan ke Kampus 3 UMM"
+          >
+            <Text style={styles.quickNavBtnText}>
+              🏫 Kampus 3 UMM (GKB 3)
+            </Text>
+          </Pressable>
+        </View>
+
         {/* TOMBOL PEMBUKTIAN GOOGLE MAPS ASLI KAMPUS 3 UMM */}
         <View style={styles.googleMapsBanner}>
           <Pressable
@@ -547,7 +613,9 @@ export default function LokasiScreen() {
                   geofenceEval.isInside ? styles.badgeTextInside : styles.badgeTextOutside,
                 ]}
               >
-                {geofenceEval.isInside ? 'Dalam Area Geofence ✓' : 'Di Luar Area Geofence ✕'}
+                {geofenceEval.isInside
+                  ? 'Dalam Area Geofence UMM ✓'
+                  : `Di Luar UMM (${geofenceEval.distanceToCenter >= 1000 ? (geofenceEval.distanceToCenter / 1000).toFixed(1) + ' km' : geofenceEval.distanceToCenter + ' m'})`}
               </Text>
             </View>
           </View>
@@ -555,16 +623,20 @@ export default function LokasiScreen() {
           {/* KOORDINAT LATITUDE & LONGITUDE */}
           <View style={styles.coordRow}>
             <View style={styles.coordBox}>
-              <Text style={styles.coordLabel}>Latitude</Text>
+              <Text style={styles.coordLabel}>Latitude Device</Text>
               <Text style={styles.coordValue}>{userCoords.latitude.toFixed(6)}</Text>
             </View>
             <View style={styles.coordBox}>
-              <Text style={styles.coordLabel}>Longitude</Text>
+              <Text style={styles.coordLabel}>Longitude Device</Text>
               <Text style={styles.coordValue}>{userCoords.longitude.toFixed(6)}</Text>
             </View>
             <View style={styles.coordBox}>
-              <Text style={styles.coordLabel}>Jarak ke Pusat</Text>
-              <Text style={styles.coordValue}>{geofenceEval.distanceToCenter} m</Text>
+              <Text style={styles.coordLabel}>Jarak ke UMM</Text>
+              <Text style={styles.coordValue}>
+                {geofenceEval.distanceToCenter >= 1000
+                  ? `${(geofenceEval.distanceToCenter / 1000).toFixed(1)} km`
+                  : `${geofenceEval.distanceToCenter} m`}
+              </Text>
             </View>
           </View>
 
@@ -982,6 +1054,35 @@ const styles = StyleSheet.create({
   },
   layerBtnTextActive: {
     color: '#FFFFFF',
+  },
+  quickNavRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 10,
+    gap: 8,
+  },
+  quickNavBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickNavBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  quickNavBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  quickNavBtnTextActive: {
+    color: '#1D4ED8',
   },
   googleMapsBanner: {
     marginHorizontal: 16,

@@ -1,5 +1,6 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { saveDeviceLocation } from '../utils/lbsService';
 
 // ==========================================
 // VALIDASI HELPERS
@@ -248,6 +250,21 @@ export default function LoginPage() {
       // Simpan nama pengguna jika ada
       if (result.user?.nama) {
         await AsyncStorage.setItem('user_nama', result.user.nama);
+      }
+
+      // 3. Week 9 LBS: Baca dan simpan posisi GPS nyata dari device pengguna saat login
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (loc?.coords) {
+            await saveDeviceLocation(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy);
+          }
+        }
+      } catch (gpsErr) {
+        console.log('GPS device saat login dilewati/tidak aktif:', gpsErr);
       }
     } catch (e) {
       console.error('Gagal menyimpan token / NIM ke AsyncStorage:', e);
