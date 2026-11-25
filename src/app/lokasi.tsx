@@ -500,7 +500,7 @@ export default function LokasiScreen() {
           <iframe
             key={`${userCoords.latitude.toFixed(5)}-${userCoords.longitude.toFixed(5)}`}
             title="Peta Kampus III Universitas Muhammadiyah Malang"
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${(userCoords.longitude - 0.004).toFixed(4)}%2C${(userCoords.latitude - 0.003).toFixed(4)}%2C${(userCoords.longitude + 0.004).toFixed(4)}%2C${(userCoords.latitude + 0.003).toFixed(4)}&layer=mapnik&marker=${userCoords.latitude.toFixed(6)}%2C${userCoords.longitude.toFixed(6)}`}
+            src={`https://maps.google.com/maps?q=${userCoords.latitude},${userCoords.longitude}&z=17&output=embed`}
             style={{
               width: '100%',
               height: 290,

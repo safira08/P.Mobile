@@ -1041,6 +1041,68 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* ========================================================================= */}
+        {/* ALUR AUTENTIKASI & LBS (WEEK 9) - TAMPILAN KHUSUS TAB PROFIL:             */}
+        {/* Menampilkan titik koordinat GPS dan nama lokasi/alamat pengguna di layar  */}
+        {/* yang diambil otomatis setelah login saat pengguna mengklik 'Izinkan'.     */}
+        {/* ========================================================================= */}
+        <View style={styles.profileLocationCard}>
+          <View style={styles.profileLocationHeader}>
+            <View style={styles.profileLocationIconBox}>
+              <Text style={{ fontSize: 22 }}>📍</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={styles.profileLocationTag}>LOKASI PERANGKAT ANDA (GPS REAL-TIME)</Text>
+                {isLoadingLocation ? (
+                  <ActivityIndicator size="small" color="#0284C7" />
+                ) : (
+                  <View style={styles.lbsLiveDot} />
+                )}
+              </View>
+              <Text style={styles.profileLocationAddressText} numberOfLines={2}>
+                {deviceAddress
+                  ? deviceAddress
+                  : isLoadingLocation
+                  ? 'Membaca titik koordinat & alamat GPS...'
+                  : locationPermissionGranted === false
+                  ? 'Izin akses lokasi tidak diizinkan oleh pengguna'
+                  : 'Menunggu pembacaan GPS perangkat...'}
+              </Text>
+            </View>
+          </View>
+
+          {deviceLocation && (
+            <View style={styles.profileLocationDetailsRow}>
+              <View style={styles.profileLocationDetailBox}>
+                <Text style={styles.profileLocationDetailLabel}>Latitude</Text>
+                <Text style={styles.profileLocationDetailValue}>{deviceLocation.latitude.toFixed(6)}</Text>
+              </View>
+              <View style={styles.profileLocationDetailBox}>
+                <Text style={styles.profileLocationDetailLabel}>Longitude</Text>
+                <Text style={styles.profileLocationDetailValue}>{deviceLocation.longitude.toFixed(6)}</Text>
+              </View>
+              <View style={styles.profileLocationDetailBox}>
+                <Text style={styles.profileLocationDetailLabel}>Jarak ke Kampus</Text>
+                <Text style={styles.profileLocationDetailValue}>
+                  {deviceDistanceToUmm !== null
+                    ? (deviceDistanceToUmm >= 1000 ? `${(deviceDistanceToUmm / 1000).toFixed(1)} km` : `${deviceDistanceToUmm} m`)
+                    : '-'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <Pressable
+            style={styles.profileOpenMapButton}
+            onPress={() => router.push('/lokasi')}
+            accessibilityRole="button"
+            accessibilityLabel="Buka Peta Kampus Lengkap"
+          >
+            <Text style={styles.profileOpenMapButtonText}>🗺️ Buka Peta Kampus & LBS Lengkap ↗</Text>
+          </Pressable>
+        </View>
+
         <Modal
           visible={isProfileMediaPickerVisible}
           transparent
@@ -1244,57 +1306,6 @@ export default function DashboardScreen() {
 
     return (
       <View style={styles.tabContentContainer}>
-        {/* ========================================================================= */}
-        {/* ALUR AUTENTIKASI & LBS (WEEK 9):                                          */}
-        {/* Tepat setelah login dan masuk dashboard, sistem memicu dialog izin        */}
-        {/* akses lokasi (Permission Prompt). Jika diizinkan (Allow), sistem langsung  */}
-        {/* mengambil titik koordinat GPS dan menampilkan nama lokasi/alamat di layar. */}
-        {/* ========================================================================= */}
-        <View style={styles.liveLocationBanner}>
-          <View style={styles.liveLocationIconWrap}>
-            <Text style={{ fontSize: 20 }}>📍</Text>
-          </View>
-          <View style={styles.liveLocationInfoWrap}>
-            <View style={styles.liveLocationTagRow}>
-              <Text style={styles.liveLocationTagText}>LOKASI PERANGKAT ANDA (REAL-TIME)</Text>
-              {isLoadingLocation ? (
-                <ActivityIndicator size="small" color="#0284C7" style={{ marginLeft: 6 }} />
-              ) : (
-                <View style={styles.lbsLiveDot} />
-              )}
-            </View>
-            <Text style={styles.liveLocationAddressText} numberOfLines={2}>
-              {deviceAddress
-                ? deviceAddress
-                : isLoadingLocation
-                ? 'Meminta izin GPS & mendeteksi posisi perangkat...'
-                : locationPermissionGranted === false
-                ? 'Izin akses lokasi belum diizinkan (Allow)'
-                : 'Mendeteksi titik koordinat perangkat...'}
-            </Text>
-            {deviceLocation && (
-              <Text style={styles.liveLocationCoordText}>
-                {deviceLocation.latitude.toFixed(6)}, {deviceLocation.longitude.toFixed(6)}
-                {deviceDistanceToUmm !== null && (
-                  <Text style={styles.liveLocationDistanceHighlight}>
-                    {' '}• {deviceDistanceToUmm >= 1000
-                      ? `${(deviceDistanceToUmm / 1000).toFixed(1)} km dari UMM`
-                      : `${deviceDistanceToUmm} m dari UMM`}
-                  </Text>
-                )}
-              </Text>
-            )}
-          </View>
-          <Pressable
-            style={styles.liveLocationMapBtn}
-            onPress={() => router.push('/lokasi')}
-            accessibilityRole="button"
-            accessibilityLabel="Buka Peta Kampus"
-          >
-            <Text style={styles.liveLocationMapBtnText}>Peta ↗</Text>
-          </Pressable>
-        </View>
-
         {/* Wallet / Saldo Card Mahasiswa SIMAK */}
         <View style={styles.walletCard}>
           <View style={styles.walletLeftCol}>
@@ -2487,73 +2498,85 @@ const styles = StyleSheet.create({
 
   // Beranda Wallet Card
   /* ========================================================================= */
-  /* PENERAPAN WEEK 9 - LBS & GEOFENCING STYLES                                */
+  /* PENERAPAN WEEK 9 - LBS & GEOFENCING STYLES (TAB PROFIL)                   */
   /* ========================================================================= */
-  liveLocationBanner: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1.2,
+  profileLocationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+    marginBottom: 6,
+    borderWidth: 1.5,
     borderColor: '#BAE6FD',
-    flexDirection: 'row',
-    alignItems: 'center',
     shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  liveLocationIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+  profileLocationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  profileLocationIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     backgroundColor: '#E0F2FE',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
-  liveLocationInfoWrap: {
-    flex: 1,
-  },
-  liveLocationTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  liveLocationTagText: {
-    fontSize: 9,
+  profileLocationTag: {
+    fontSize: 9.5,
     fontWeight: '800',
-    color: '#0369A1',
-    letterSpacing: 0.4,
+    color: '#0284C7',
+    letterSpacing: 0.5,
   },
-  liveLocationAddressText: {
-    fontSize: 12.5,
+  profileLocationAddressText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
+    lineHeight: 18,
     marginTop: 2,
   },
-  liveLocationCoordText: {
-    fontSize: 11,
+  profileLocationDetailsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  profileLocationDetailBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  profileLocationDetailLabel: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#64748B',
-    marginTop: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginBottom: 2,
   },
-  liveLocationDistanceHighlight: {
-    color: '#059669',
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  profileLocationDetailValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  liveLocationMapBtn: {
-    backgroundColor: '#0284C7',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginLeft: 8,
+  profileOpenMapButton: {
+    backgroundColor: '#0F2850',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
   },
-  liveLocationMapBtnText: {
+  profileOpenMapButtonText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
   },
   mapQuickBtn: {
     width: 36,
